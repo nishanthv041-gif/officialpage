@@ -30,6 +30,7 @@ import {
   AdmissionApplication,
   GalleryItem,
   GallerySection,
+  SiteConfig,
 } from '../types/school';
 import {
   convertAdmissionsToCsv,
@@ -37,6 +38,7 @@ import {
 } from '../utils/schoolLogic';
 import { createEditorialSvgDataUri } from '../data/seedData';
 import { ResilientImage } from '../components/common/TiltCard';
+import { firebaseClientConfig } from '../services/firebase';
 
 type AdminModule =
   | 'overview'
@@ -1324,6 +1326,53 @@ export const AdminPortalPage: React.FC = () => {
                         )}
                       </div>
                     ))}
+                  </div>
+                </div>
+
+                {/* Firebase Client & Cloud Sync Card */}
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 space-y-4 text-xs">
+                  <div className="flex items-center justify-between">
+                    <h2 className="font-display text-lg font-bold text-slate-900 dark:text-white">
+                      Firebase Client & Cloud Push
+                    </h2>
+                    <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-500 font-mono text-[11px]">
+                      Connected
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 rounded-lg bg-slate-50 dark:bg-slate-950 p-3 font-mono text-[11px] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800">
+                    <div>
+                      <span className="text-slate-400">projectId:</span>{' '}
+                      <span className="text-amber-500">{firebaseClientConfig.projectId}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400">authDomain:</span>{' '}
+                      {firebaseClientConfig.authDomain}
+                    </div>
+                    <div className="truncate">
+                      <span className="text-slate-400">firestoreDb:</span>{' '}
+                      {firebaseClientConfig.firestoreDatabaseId}
+                    </div>
+                    <div>
+                      <span className="text-slate-400">storageBucket:</span>{' '}
+                      {firebaseClientConfig.storageBucket}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => updateSiteConfig(siteConfig)}
+                      className="px-4 py-2 rounded-lg bg-amber-500 text-slate-950 font-semibold cursor-pointer"
+                    >
+                      Push Current Site Content to Firestore
+                    </button>
+                  </div>
+                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
+                    <div className="font-semibold text-slate-700 dark:text-slate-200">
+                      Firebase Hosting CLI Push (Configured via firebase.json & .firebaserc):
+                    </div>
+                    <code className="block rounded bg-slate-100 dark:bg-slate-950 px-2.5 py-1.5 font-mono text-amber-500">
+                      npm run build && npx firebase-tools deploy --only hosting
+                    </code>
                   </div>
                 </div>
               </div>
