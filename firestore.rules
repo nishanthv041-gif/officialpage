@@ -1,0 +1,239 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pillar 1: Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global Primitives
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isBootstrappedSuperAdmin() {
+      return isVerifiedUser() && request.auth.token.email == 'nishanthv041@gmail.com';
+    }
+
+    function isAdmin() {
+      return isBootstrappedSuperAdmin() || (
+        isVerifiedUser() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // Validation Blueprints
+    function isValidSiteConfig(data) {
+      return data.keys().hasAll([
+        'schoolName', 'tagline', 'location', 'heroHeadline', 'heroSubtext',
+        'welcomeTitle', 'welcomeMessage', 'principalName', 'principalMessage',
+        'vision', 'mission', 'history', 'address', 'phonePrimary', 'email',
+        'workingHours', 'googleMapsUrl', 'studentsCount', 'teachersCount',
+        'yearsCount', 'awardsCount', 'updatedAt', 'updatedBy'
+      ]) &&
+      data.keys().hasOnly([
+        'schoolName', 'tagline', 'location', 'heroHeadline', 'heroSubtext',
+        'welcomeTitle', 'welcomeMessage', 'principalName', 'principalMessage',
+        'vision', 'mission', 'history', 'address', 'phonePrimary', 'phoneSecondary',
+        'email', 'workingHours', 'googleMapsUrl', 'googleMapsEmbedUrl',
+        'whatsappNumber', 'studentsCount', 'teachersCount', 'yearsCount',
+        'awardsCount', 'updatedAt', 'updatedBy'
+      ]) &&
+      data.schoolName is string && data.schoolName.size() >= 2 && data.schoolName.size() <= 120 &&
+      data.tagline is string && data.tagline.size() >= 2 && data.tagline.size() <= 120 &&
+      data.location is string && data.location.size() >= 2 && data.location.size() <= 200 &&
+      data.heroHeadline is string && data.heroHeadline.size() >= 2 && data.heroHeadline.size() <= 180 &&
+      data.heroSubtext is string && data.heroSubtext.size() >= 2 && data.heroSubtext.size() <= 500 &&
+      data.welcomeTitle is string && data.welcomeTitle.size() >= 2 && data.welcomeTitle.size() <= 160 &&
+      data.welcomeMessage is string && data.welcomeMessage.size() >= 10 && data.welcomeMessage.size() <= 2000 &&
+      data.principalName is string && data.principalName.size() >= 2 && data.principalName.size() <= 120 &&
+      data.principalMessage is string && data.principalMessage.size() >= 10 && data.principalMessage.size() <= 2000 &&
+      data.vision is string && data.vision.size() >= 10 && data.vision.size() <= 1000 &&
+      data.mission is string && data.mission.size() >= 10 && data.mission.size() <= 1000 &&
+      data.history is string && data.history.size() >= 10 && data.history.size() <= 2500 &&
+      data.address is string && data.address.size() >= 5 && data.address.size() <= 300 &&
+      data.phonePrimary is string && data.phonePrimary.size() >= 6 && data.phonePrimary.size() <= 30 &&
+      (!('phoneSecondary' in data) || (data.phoneSecondary is string && data.phoneSecondary.size() <= 30)) &&
+      data.email is string && data.email.size() >= 5 && data.email.size() <= 120 &&
+      data.workingHours is string && data.workingHours.size() >= 2 && data.workingHours.size() <= 120 &&
+      data.googleMapsUrl is string && data.googleMapsUrl.size() >= 5 && data.googleMapsUrl.size() <= 500 &&
+      (!('googleMapsEmbedUrl' in data) || (data.googleMapsEmbedUrl is string && data.googleMapsEmbedUrl.size() >= 5 && data.googleMapsEmbedUrl.size() <= 600)) &&
+      (!('whatsappNumber' in data) || (data.whatsappNumber is string && data.whatsappNumber.size() >= 6 && data.whatsappNumber.size() <= 25)) &&
+      data.studentsCount is int && data.studentsCount >= 0 && data.studentsCount <= 100000 &&
+      data.teachersCount is int && data.teachersCount >= 0 && data.teachersCount <= 10000 &&
+      data.yearsCount is int && data.yearsCount >= 0 && data.yearsCount <= 500 &&
+      data.awardsCount is int && data.awardsCount >= 0 && data.awardsCount <= 50000 &&
+      data.updatedAt is timestamp &&
+      data.updatedBy is string && data.updatedBy == request.auth.uid;
+    }
+
+    function isValidGalleryItem(data) {
+      return data.keys().hasAll([
+        'section', 'title', 'category', 'year', 'date', 'description',
+        'imageUrl', 'authorUid', 'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'section', 'title', 'subtitle', 'category', 'year', 'date',
+        'description', 'imageUrl', 'authorUid', 'createdAt', 'updatedAt'
+      ]) &&
+      data.section is string && data.section in ['events', 'sports', 'achievements', 'announcements', 'faculty', 'testimonials', 'downloads', 'faq'] &&
+      data.title is string && data.title.size() >= 2 && data.title.size() <= 160 &&
+      (!('subtitle' in data) || (data.subtitle is string && data.subtitle.size() >= 1 && data.subtitle.size() <= 200)) &&
+      data.category is string && data.category.size() >= 1 && data.category.size() <= 80 &&
+      data.year is string && data.year.size() >= 4 && data.year.size() <= 20 &&
+      data.date is string && data.date.size() >= 2 && data.date.size() <= 40 &&
+      data.description is string && data.description.size() >= 2 && data.description.size() <= 1500 &&
+      data.imageUrl is string && data.imageUrl.size() >= 5 && data.imageUrl.size() <= 15000 &&
+      data.authorUid is string && data.authorUid == request.auth.uid &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidAdmissionApplication(data) {
+      return data.keys().hasAll([
+        'applicationId', 'applicantUid', 'studentName', 'gender', 'dob',
+        'batch', 'gradeApplying', 'residenceType', 'parentName', 'phone',
+        'address', 'email', 'status', 'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'applicationId', 'applicantUid', 'studentName', 'gender', 'dob',
+        'batch', 'gradeApplying', 'residenceType', 'parentName', 'phone',
+        'address', 'email', 'status', 'createdAt', 'updatedAt'
+      ]) &&
+      data.applicationId is string && data.applicationId.size() >= 6 && data.applicationId.size() <= 40 && data.applicationId.matches('^[a-zA-Z0-9_\\-]+$') &&
+      data.applicantUid is string && data.applicantUid.size() >= 1 && data.applicantUid.size() <= 128 &&
+      data.studentName is string && data.studentName.size() >= 2 && data.studentName.size() <= 120 &&
+      data.gender is string && data.gender in ['Male', 'Female', 'Other'] &&
+      data.dob is string && data.dob.size() >= 4 && data.dob.size() <= 20 &&
+      data.batch is string && data.batch.size() >= 4 && data.batch.size() <= 20 &&
+      data.gradeApplying is string && data.gradeApplying.size() >= 1 && data.gradeApplying.size() <= 80 &&
+      data.residenceType is string && data.residenceType in ['Day Scholar', 'Hostel'] &&
+      data.parentName is string && data.parentName.size() >= 2 && data.parentName.size() <= 120 &&
+      data.phone is string && data.phone.size() == 10 && data.phone.matches('^[0-9]{10}$') &&
+      data.address is string && data.address.size() >= 5 && data.address.size() <= 400 &&
+      data.email is string && data.email.size() >= 5 && data.email.size() <= 120 &&
+      data.status is string && data.status in ['pending', 'accepted', 'rejected'] &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidContactMessage(data) {
+      return data.keys().hasAll([
+        'senderUid', 'name', 'email', 'phone', 'subject', 'message',
+        'status', 'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'senderUid', 'name', 'email', 'phone', 'subject', 'message',
+        'status', 'createdAt', 'updatedAt'
+      ]) &&
+      data.senderUid is string && data.senderUid.size() >= 1 && data.senderUid.size() <= 128 &&
+      data.name is string && data.name.size() >= 2 && data.name.size() <= 100 &&
+      data.email is string && data.email.size() >= 5 && data.email.size() <= 120 &&
+      data.phone is string && data.phone.size() >= 6 && data.phone.size() <= 20 &&
+      data.subject is string && data.subject.size() >= 2 && data.subject.size() <= 150 &&
+      data.message is string && data.message.size() >= 5 && data.message.size() <= 2000 &&
+      data.status is string && data.status in ['unread', 'read', 'archived'] &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidAdminUser(data, adminUid) {
+      return data.keys().hasAll(['uid', 'email', 'role', 'createdAt']) &&
+      data.keys().hasOnly(['uid', 'email', 'role', 'createdAt']) &&
+      data.uid is string && data.uid == adminUid && data.uid.size() >= 1 && data.uid.size() <= 128 &&
+      data.email is string && data.email.size() >= 5 && data.email.size() <= 120 &&
+      data.role is string && data.role in ['super_admin', 'editor'] &&
+      data.createdAt is timestamp;
+    }
+
+    // 1. /site_config/{configId} (Public content configuration, admin write)
+    match /site_config/{configId} {
+      allow get: if isValidId(configId);
+      allow list: if resource.data.schoolName is string;
+      allow create: if isVerifiedUser() && isValidId(configId) && isValidSiteConfig(incoming()) && incoming().updatedAt == request.time && isAdmin();
+      allow update: if isVerifiedUser() && isValidId(configId) && isValidSiteConfig(incoming()) && incoming().updatedAt == request.time && isAdmin();
+      allow delete: if isVerifiedUser() && isValidId(configId) && isAdmin();
+    }
+
+    // 2. /gallery_items/{itemId} (Public gallery content, admin write)
+    match /gallery_items/{itemId} {
+      allow get: if isValidId(itemId);
+      allow list: if resource.data.section in ['events', 'sports', 'achievements', 'announcements', 'faculty', 'testimonials', 'downloads', 'faq'];
+      allow create: if isVerifiedUser() && isValidId(itemId) && isValidGalleryItem(incoming()) && incoming().createdAt == request.time && incoming().updatedAt == request.time && isAdmin();
+      allow update: if isVerifiedUser() && isValidId(itemId) && isValidGalleryItem(incoming()) &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        isAdmin();
+      allow delete: if isVerifiedUser() && isValidId(itemId) && isAdmin();
+    }
+
+    // 3. /admissions/{admissionId} (PII Isolated: Applicant or Admin only, zero DB lookups in list)
+    match /admissions/{admissionId} {
+      allow get: if isVerifiedUser() && isValidId(admissionId) && (existing().applicantUid == request.auth.uid || isAdmin());
+      allow list: if isVerifiedUser() && (resource.data.applicantUid == request.auth.uid || (isBootstrappedSuperAdmin() && resource.data.status in ['pending', 'accepted', 'rejected']));
+      allow create: if isVerifiedUser() && isValidId(admissionId) && isValidAdmissionApplication(incoming()) &&
+        incoming().applicantUid == request.auth.uid &&
+        incoming().status == 'pending' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() && isValidId(admissionId) && isValidAdmissionApplication(incoming()) &&
+        incoming().applicationId == existing().applicationId &&
+        incoming().applicantUid == existing().applicantUid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          // Action 1: Admin status review transition
+          (isAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])) ||
+          // Action 2: Applicant contact detail correction while still pending (non-terminal lock)
+          (existing().applicantUid == request.auth.uid && existing().status == 'pending' && incoming().status == 'pending' && incoming().diff(existing()).affectedKeys().hasOnly(['phone', 'address', 'updatedAt']))
+        );
+      allow delete: if isVerifiedUser() && isValidId(admissionId) && isAdmin();
+    }
+
+    // 4. /contact_messages/{messageId} (PII Isolated: Sender or Admin only, zero DB lookups in list)
+    match /contact_messages/{messageId} {
+      allow get: if isVerifiedUser() && isValidId(messageId) && (existing().senderUid == request.auth.uid || isAdmin());
+      allow list: if isVerifiedUser() && (resource.data.senderUid == request.auth.uid || (isBootstrappedSuperAdmin() && resource.data.status in ['unread', 'read', 'archived']));
+      allow create: if isVerifiedUser() && isValidId(messageId) && isValidContactMessage(incoming()) &&
+        incoming().senderUid == request.auth.uid &&
+        incoming().status == 'unread' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() && isValidId(messageId) && isValidContactMessage(incoming()) &&
+        incoming().senderUid == existing().senderUid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        isAdmin() &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']);
+      allow delete: if isVerifiedUser() && isValidId(messageId) && isAdmin();
+    }
+
+    // 5. /admins/{adminUid} (Admin Role Directory)
+    match /admins/{adminUid} {
+      allow get: if isVerifiedUser() && isValidId(adminUid) && (request.auth.uid == adminUid || isAdmin());
+      allow list: if isBootstrappedSuperAdmin() && resource.data.role in ['super_admin', 'editor'];
+      allow create: if isVerifiedUser() && isValidId(adminUid) && isValidAdminUser(incoming(), adminUid) && incoming().createdAt == request.time && isBootstrappedSuperAdmin();
+      allow update: if isVerifiedUser() && isValidId(adminUid) && isValidAdminUser(incoming(), adminUid) &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        isBootstrappedSuperAdmin() &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['role', 'email']);
+      allow delete: if isVerifiedUser() && isValidId(adminUid) && isBootstrappedSuperAdmin();
+    }
+  }
+}

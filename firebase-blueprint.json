@@ -1,0 +1,192 @@
+{
+  "entities": {
+    "SiteConfig": {
+      "title": "SiteConfig",
+      "description": "Global school configuration, hero content, counters, contact details, social links, and feature toggles.",
+      "type": "object",
+      "properties": {
+        "schoolName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "tagline": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "location": { "type": "string", "minLength": 2, "maxLength": 200 },
+        "heroHeadline": { "type": "string", "minLength": 2, "maxLength": 180 },
+        "heroSubtext": { "type": "string", "minLength": 2, "maxLength": 500 },
+        "welcomeTitle": { "type": "string", "minLength": 2, "maxLength": 160 },
+        "welcomeMessage": { "type": "string", "minLength": 10, "maxLength": 2000 },
+        "principalName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "principalMessage": { "type": "string", "minLength": 10, "maxLength": 2000 },
+        "vision": { "type": "string", "minLength": 10, "maxLength": 1000 },
+        "mission": { "type": "string", "minLength": 10, "maxLength": 1000 },
+        "history": { "type": "string", "minLength": 10, "maxLength": 2500 },
+        "address": { "type": "string", "minLength": 5, "maxLength": 300 },
+        "phonePrimary": { "type": "string", "minLength": 6, "maxLength": 30 },
+        "phoneSecondary": { "type": "string", "minLength": 0, "maxLength": 30 },
+        "email": { "type": "string", "format": "email", "minLength": 5, "maxLength": 120 },
+        "workingHours": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "googleMapsUrl": { "type": "string", "minLength": 5, "maxLength": 500 },
+        "googleMapsEmbedUrl": { "type": "string", "minLength": 5, "maxLength": 600 },
+        "whatsappNumber": { "type": "string", "minLength": 6, "maxLength": 25 },
+        "studentsCount": { "type": "number" },
+        "teachersCount": { "type": "number" },
+        "yearsCount": { "type": "number" },
+        "awardsCount": { "type": "number" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "updatedBy": { "type": "string", "minLength": 1, "maxLength": 128 }
+      },
+      "required": [
+        "schoolName",
+        "tagline",
+        "location",
+        "heroHeadline",
+        "heroSubtext",
+        "welcomeTitle",
+        "welcomeMessage",
+        "principalName",
+        "principalMessage",
+        "vision",
+        "mission",
+        "history",
+        "address",
+        "phonePrimary",
+        "email",
+        "workingHours",
+        "googleMapsUrl",
+        "studentsCount",
+        "teachersCount",
+        "yearsCount",
+        "awardsCount",
+        "updatedAt",
+        "updatedBy"
+      ]
+    },
+    "GalleryItem": {
+      "title": "GalleryItem",
+      "description": "Public item for Events, Sports, or Achievements galleries.",
+      "type": "object",
+      "properties": {
+        "section": { "type": "string", "enum": ["events", "sports", "achievements", "announcements", "faculty", "testimonials", "downloads", "faq"] },
+        "title": { "type": "string", "minLength": 2, "maxLength": 160 },
+        "subtitle": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "category": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "year": { "type": "string", "minLength": 4, "maxLength": 20 },
+        "date": { "type": "string", "minLength": 2, "maxLength": 40 },
+        "description": { "type": "string", "minLength": 2, "maxLength": 1500 },
+        "imageUrl": { "type": "string", "minLength": 5, "maxLength": 15000 },
+        "authorUid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "section",
+        "title",
+        "category",
+        "year",
+        "date",
+        "description",
+        "imageUrl",
+        "authorUid",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AdmissionApplication": {
+      "title": "AdmissionApplication",
+      "description": "Pre-admission registration application submitted by a parent/student.",
+      "type": "object",
+      "properties": {
+        "applicationId": { "type": "string", "pattern": "^[a-zA-Z0-9_\\-]+$", "minLength": 6, "maxLength": 40 },
+        "applicantUid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "studentName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "gender": { "type": "string", "enum": ["Male", "Female", "Other"] },
+        "dob": { "type": "string", "minLength": 4, "maxLength": 20 },
+        "batch": { "type": "string", "minLength": 4, "maxLength": 20 },
+        "gradeApplying": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "residenceType": { "type": "string", "enum": ["Day Scholar", "Hostel"] },
+        "parentName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "phone": { "type": "string", "pattern": "^[0-9]{10}$", "minLength": 10, "maxLength": 10 },
+        "address": { "type": "string", "minLength": 5, "maxLength": 400 },
+        "email": { "type": "string", "format": "email", "minLength": 5, "maxLength": 120 },
+        "status": { "type": "string", "enum": ["pending", "accepted", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "applicationId",
+        "applicantUid",
+        "studentName",
+        "gender",
+        "dob",
+        "batch",
+        "gradeApplying",
+        "residenceType",
+        "parentName",
+        "phone",
+        "address",
+        "email",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ContactMessage": {
+      "title": "ContactMessage",
+      "description": "Inquiry submitted via the public Contact Us form.",
+      "type": "object",
+      "properties": {
+        "senderUid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "name": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "email": { "type": "string", "format": "email", "minLength": 5, "maxLength": 120 },
+        "phone": { "type": "string", "minLength": 6, "maxLength": 20 },
+        "subject": { "type": "string", "minLength": 2, "maxLength": 150 },
+        "message": { "type": "string", "minLength": 5, "maxLength": 2000 },
+        "status": { "type": "string", "enum": ["unread", "read", "archived"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "senderUid",
+        "name",
+        "email",
+        "phone",
+        "subject",
+        "message",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AdminUser": {
+      "title": "AdminUser",
+      "description": "Authorized school administrator record.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "email": { "type": "string", "format": "email", "minLength": 5, "maxLength": 120 },
+        "role": { "type": "string", "enum": ["super_admin", "editor"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/site_config/{configId}": {
+      "schema": { "$ref": "#/entities/SiteConfig" },
+      "description": "Publicly readable school settings and content; writable only by verified admins."
+    },
+    "/gallery_items/{itemId}": {
+      "schema": { "$ref": "#/entities/GalleryItem" },
+      "description": "Publicly readable events, sports, achievements, faculty, and downloads items; writable only by verified admins."
+    },
+    "/admissions/{admissionId}": {
+      "schema": { "$ref": "#/entities/AdmissionApplication" },
+      "description": "Pre-admission registrations Containing PII. Readable only by the applicant owner or verified admins."
+    },
+    "/contact_messages/{messageId}": {
+      "schema": { "$ref": "#/entities/ContactMessage" },
+      "description": "Contact form messages containing PII. Readable only by the sender or verified admins."
+    },
+    "/admins/{adminUid}": {
+      "schema": { "$ref": "#/entities/AdminUser" },
+      "description": "Admin role directory. Readable by the user themselves or admins; writable only by bootstrapped super-admin."
+    }
+  }
+}
