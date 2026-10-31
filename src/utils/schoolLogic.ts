@@ -160,3 +160,27 @@ export function convertAdmissionsToCsv(applications: AdmissionApplication[]): st
 
   return [headers.map(escapeCsvCell).join(','), ...rows].join('\n');
 }
+
+export function sortAndFilterActiveAnnouncements<
+  T extends {
+    active: boolean;
+    isUrgent: boolean;
+    priority: 'urgent' | 'standard';
+    date: string;
+    createdAt?: string;
+  }
+>(items: T[]): T[] {
+  return items
+    .filter((item) => item.active)
+    .sort((a, b) => {
+      const aUrgent = a.isUrgent || a.priority === 'urgent' ? 1 : 0;
+      const bUrgent = b.isUrgent || b.priority === 'urgent' ? 1 : 0;
+      if (aUrgent !== bUrgent) {
+        return bUrgent - aUrgent;
+      }
+      const timeA = new Date(a.createdAt || a.date).getTime() || 0;
+      const timeB = new Date(b.createdAt || b.date).getTime() || 0;
+      return timeB - timeA;
+    });
+}
+

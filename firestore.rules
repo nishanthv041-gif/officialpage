@@ -162,6 +162,27 @@ service cloud.firestore {
       data.createdAt is timestamp;
     }
 
+    function isValidAnnouncement(data) {
+      return data.keys().hasAll([
+        'title', 'category', 'priority', 'isUrgent', 'active',
+        'date', 'authorUid', 'createdAt', 'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'title', 'category', 'priority', 'isUrgent', 'active',
+        'date', 'link', 'authorUid', 'createdAt', 'updatedAt'
+      ]) &&
+      data.title is string && data.title.size() >= 2 && data.title.size() <= 240 &&
+      data.category is string && data.category.size() >= 2 && data.category.size() <= 60 &&
+      data.priority is string && data.priority in ['urgent', 'standard'] &&
+      data.isUrgent is bool &&
+      data.active is bool &&
+      data.date is string && data.date.size() >= 2 && data.date.size() <= 40 &&
+      (!('link' in data) || (data.link is string && data.link.size() <= 300)) &&
+      data.authorUid is string && data.authorUid == request.auth.uid &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
     // 1. /site_config/{configId} (Public content configuration, admin write)
     match /site_config/{configId} {
       allow get: if isValidId(configId);
@@ -181,6 +202,19 @@ service cloud.firestore {
         incoming().updatedAt == request.time &&
         isAdmin();
       allow delete: if isVerifiedUser() && isValidId(itemId) && isAdmin();
+    }
+
+    // 2b. /announcements/{announcementId} (Public real-time marquee ticker, admin write)
+    match /announcements/{announcementId} {
+      allow get: if isValidId(announcementId);
+      allow list: if resource.data.active is bool;
+      allow create: if isVerifiedUser() && isValidId(announcementId) && isValidAnnouncement(incoming()) && incoming().createdAt == request.time && incoming().updatedAt == request.time && isAdmin();
+      allow update: if isVerifiedUser() && isValidId(announcementId) && isValidAnnouncement(incoming()) &&
+        incoming().authorUid == existing().authorUid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        isAdmin();
+      allow delete: if isVerifiedUser() && isValidId(announcementId) && isAdmin();
     }
 
     // 3. /admissions/{admissionId} (PII Isolated: Applicant or Admin only, zero DB lookups in list)

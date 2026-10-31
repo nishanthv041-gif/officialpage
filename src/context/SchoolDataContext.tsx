@@ -29,6 +29,7 @@ import {
   AdmissionApplication,
   AdmissionStatus,
   AdminUserRecord,
+  AnnouncementItem,
   ContactMessage,
   GalleryItem,
   SiteConfig,
@@ -36,6 +37,7 @@ import {
 import {
   INITIAL_ADMINS,
   INITIAL_ADMISSIONS,
+  INITIAL_ANNOUNCEMENTS,
   INITIAL_CONTACT_MESSAGES,
   INITIAL_GALLERY_ITEMS,
   INITIAL_SITE_CONFIG,
@@ -52,6 +54,7 @@ export interface ToastNotice {
 interface SchoolDataContextValue {
   siteConfig: SiteConfig;
   galleryItems: GalleryItem[];
+  announcements: AnnouncementItem[];
   admissions: AdmissionApplication[];
   contactMessages: ContactMessage[];
   admins: AdminUserRecord[];
@@ -74,6 +77,16 @@ interface SchoolDataContextValue {
   updateGalleryItem: (id: string, partial: Partial<GalleryItem>) => Promise<void>;
   deleteGalleryItem: (id: string) => Promise<void>;
   reorderGalleryItem: (id: string, direction: 'up' | 'down') => void;
+  addAnnouncement: (payload: {
+    title: string;
+    category: string;
+    isUrgent: boolean;
+    date: string;
+    link?: string;
+  }) => Promise<void>;
+  toggleAnnouncementUrgent: (id: string) => Promise<void>;
+  toggleAnnouncementActive: (id: string) => Promise<void>;
+  deleteAnnouncement: (id: string) => Promise<void>;
   uploadMediaFile: (file: File, folder: string) => Promise<string>;
   submitAdmission: (
     payload: Omit<
@@ -99,6 +112,7 @@ const SchoolDataContext = createContext<SchoolDataContextValue | undefined>(unde
 const STORAGE_KEYS = {
   SITE_CONFIG: 'srt_site_config_v1',
   GALLERY: 'srt_gallery_items_v1',
+  ANNOUNCEMENTS: 'srt_announcements_v1',
   ADMISSIONS: 'srt_admissions_v1',
   CONTACTS: 'srt_contacts_v1',
   ADMINS: 'srt_admins_v1',
@@ -123,6 +137,9 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   );
   const [galleryItems, setGalleryItems] = useState<GalleryItem[]>(() =>
     loadStored(STORAGE_KEYS.GALLERY, INITIAL_GALLERY_ITEMS)
+  );
+  const [announcements, setAnnouncements] = useState<AnnouncementItem[]>(() =>
+    loadStored(STORAGE_KEYS.ANNOUNCEMENTS, INITIAL_ANNOUNCEMENTS)
   );
   const [admissions, setAdmissions] = useState<AdmissionApplication[]>(() =>
     loadStored(STORAGE_KEYS.ADMISSIONS, INITIAL_ADMISSIONS)
@@ -219,6 +236,14 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   useEffect(() => {
     try {
+      localStorage.setItem(STORAGE_KEYS.ANNOUNCEMENTS, JSON.stringify(announcements));
+    } catch {
+      // ignore
+    }
+  }, [announcements]);
+
+  useEffect(() => {
+    try {
       localStorage.setItem(STORAGE_KEYS.ADMISSIONS, JSON.stringify(admissions));
     } catch {
       // ignore
@@ -282,6 +307,53 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       },
       () => {
         // Ignore when initial doc does not exist yet
+      }
+    );
+    return () => unsub();
+  }, [isAuthReady]);
+
+  // Real-time Firestore listener for public announcements collection
+  useEffect(() => {
+    if (!isAuthReady) return;
+    const announcementsQuery = query(
+      collection(db, 'announcements'),
+      where('active', 'in', [true, false])
+    );
+    const unsub = onSnapshot(
+      announcementsQuery,
+      (snap) => {
+        if (!snap.empty) {
+          const remoteItems: AnnouncementItem[] = snap.docs.map((d) => {
+            const raw = d.data();
+            return {
+              id: d.id,
+              title: String(raw.title || ''),
+              category: String(raw.category || 'General'),
+              priority: raw.priority === 'urgent' ? 'urgent' : 'standard',
+              isUrgent: Boolean(raw.isUrgent),
+              active: raw.active !== false,
+              date: String(raw.date || new Date().toISOString().slice(0, 10)),
+              ...(raw.link ? { link: String(raw.link) } : {}),
+              authorUid: String(raw.authorUid || 'admin'),
+              createdAt:
+                typeof raw.createdAt?.toDate === 'function'
+                  ? raw.createdAt.toDate().toISOString()
+                  : String(raw.createdAt || new Date().toISOString()),
+              updatedAt:
+                typeof raw.updatedAt?.toDate === 'function'
+                  ? raw.updatedAt.toDate().toISOString()
+                  : String(raw.updatedAt || new Date().toISOString()),
+            };
+          });
+          setAnnouncements((prev) => {
+            const byId = new Map(prev.map((item) => [item.id, item]));
+            remoteItems.forEach((r) => byId.set(r.id, r));
+            return Array.from(byId.values());
+          });
+        }
+      },
+      () => {
+        // Fallback to local/seeded announcements when collection is initially empty
       }
     );
     return () => unsub();
@@ -796,11 +868,159 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     [showToast]
   );
 
+  const addAnnouncement = useCallback(
+    async (payload: {
+      title: string;
+      category: string;
+      isUrgent: boolean;
+      date: string;
+      link?: string;
+    }) => {
+      const id = `ann-${Date.now()}`;
+      const now = new Date().toISOString();
+      const authorUid = auth.currentUser?.uid || 'bootstrap-super-admin';
+      const newItem: AnnouncementItem = {
+        id,
+        title: payload.title.trim().slice(0, 240),
+        category: (payload.category.trim() || 'Notice').slice(0, 60),
+        priority: payload.isUrgent ? 'urgent' : 'standard',
+        isUrgent: payload.isUrgent,
+        active: true,
+        date: (payload.date.trim() || now.slice(0, 10)).slice(0, 40),
+        ...(payload.link?.trim() ? { link: payload.link.trim().slice(0, 300) } : {}),
+        authorUid,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      setAnnouncements((prev) => [newItem, ...prev]);
+
+      if (auth.currentUser && auth.currentUser.emailVerified) {
+        const path = `announcements/${id}`;
+        try {
+          await setDoc(doc(db, 'announcements', id), {
+            title: newItem.title,
+            category: newItem.category,
+            priority: newItem.priority,
+            isUrgent: newItem.isUrgent,
+            active: newItem.active,
+            date: newItem.date,
+            ...(newItem.link ? { link: newItem.link } : {}),
+            authorUid: auth.currentUser.uid,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          });
+        } catch (err) {
+          handleFirestoreError(err, OperationType.CREATE, path);
+        }
+      }
+
+      showToast(
+        newItem.isUrgent ? 'Urgent Ticker Broadcast Live' : 'Announcement Published',
+        `"${newItem.title}" is now streaming on the top marquee ticker.`
+      );
+    },
+    [showToast]
+  );
+
+  const toggleAnnouncementUrgent = useCallback(
+    async (id: string) => {
+      const target = announcements.find((a) => a.id === id);
+      if (!target) return;
+      const nextUrgent = !target.isUrgent;
+      const nextPriority = nextUrgent ? 'urgent' : 'standard';
+
+      setAnnouncements((prev) =>
+        prev.map((a) =>
+          a.id === id
+            ? {
+                ...a,
+                isUrgent: nextUrgent,
+                priority: nextPriority,
+                updatedAt: new Date().toISOString(),
+              }
+            : a
+        )
+      );
+
+      if (auth.currentUser && auth.currentUser.emailVerified) {
+        try {
+          await updateDoc(doc(db, 'announcements', id), {
+            isUrgent: nextUrgent,
+            priority: nextPriority,
+            updatedAt: serverTimestamp(),
+          });
+        } catch {
+          // Local fallback updated for seed items
+        }
+      }
+
+      showToast(
+        nextUrgent ? 'Marked as Urgent' : 'Set to Standard Priority',
+        `"${target.title.slice(0, 48)}..." updated.`
+      );
+    },
+    [announcements, showToast]
+  );
+
+  const toggleAnnouncementActive = useCallback(
+    async (id: string) => {
+      const target = announcements.find((a) => a.id === id);
+      if (!target) return;
+      const nextActive = !target.active;
+
+      setAnnouncements((prev) =>
+        prev.map((a) =>
+          a.id === id
+            ? {
+                ...a,
+                active: nextActive,
+                updatedAt: new Date().toISOString(),
+              }
+            : a
+        )
+      );
+
+      if (auth.currentUser && auth.currentUser.emailVerified) {
+        try {
+          await updateDoc(doc(db, 'announcements', id), {
+            active: nextActive,
+            updatedAt: serverTimestamp(),
+          });
+        } catch {
+          // Local fallback updated
+        }
+      }
+
+      showToast(
+        nextActive ? 'Announcement Activated' : 'Announcement Hidden',
+        `"${target.title.slice(0, 48)}..." visibility updated.`
+      );
+    },
+    [announcements, showToast]
+  );
+
+  const deleteAnnouncement = useCallback(
+    async (id: string) => {
+      setAnnouncements((prev) => prev.filter((a) => a.id !== id));
+      if (auth.currentUser && auth.currentUser.emailVerified) {
+        try {
+          await deleteDoc(doc(db, 'announcements', id));
+        } catch {
+          // Local fallback deleted
+        }
+      }
+      showToast('Announcement Removed', 'Ticker update has been deleted.', 'info');
+    },
+    [showToast]
+  );
+
   return (
     <SchoolDataContext.Provider
       value={{
         siteConfig,
         galleryItems,
+        announcements,
         admissions,
         contactMessages,
         admins,
@@ -823,6 +1043,10 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         updateGalleryItem,
         deleteGalleryItem,
         reorderGalleryItem,
+        addAnnouncement,
+        toggleAnnouncementUrgent,
+        toggleAnnouncementActive,
+        deleteAnnouncement,
         uploadMediaFile,
         submitAdmission,
         updateAdmissionStatus,

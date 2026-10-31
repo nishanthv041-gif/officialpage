@@ -165,6 +165,34 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["uid", "email", "role", "createdAt"]
+    },
+    "Announcement": {
+      "title": "Announcement",
+      "description": "Real-time news and urgent announcement ticker item stored in the announcements collection.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "minLength": 2, "maxLength": 240 },
+        "category": { "type": "string", "minLength": 2, "maxLength": 60 },
+        "priority": { "type": "string", "enum": ["urgent", "standard"] },
+        "isUrgent": { "type": "boolean" },
+        "active": { "type": "boolean" },
+        "date": { "type": "string", "minLength": 2, "maxLength": 40 },
+        "link": { "type": "string", "minLength": 0, "maxLength": 300 },
+        "authorUid": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "title",
+        "category",
+        "priority",
+        "isUrgent",
+        "active",
+        "date",
+        "authorUid",
+        "createdAt",
+        "updatedAt"
+      ]
     }
   },
   "firestore": {
@@ -175,6 +203,10 @@
     "/gallery_items/{itemId}": {
       "schema": { "$ref": "#/entities/GalleryItem" },
       "description": "Publicly readable events, sports, achievements, faculty, and downloads items; writable only by verified admins."
+    },
+    "/announcements/{announcementId}": {
+      "schema": { "$ref": "#/entities/Announcement" },
+      "description": "Publicly readable real-time news and urgent announcements marquee ticker collection; writable only by verified admins."
     },
     "/admissions/{admissionId}": {
       "schema": { "$ref": "#/entities/AdmissionApplication" },

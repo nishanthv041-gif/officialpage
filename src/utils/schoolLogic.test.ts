@@ -8,8 +8,9 @@ import {
   filterGalleryItems,
   filterAdmissions,
   convertAdmissionsToCsv,
+  sortAndFilterActiveAnnouncements,
 } from './schoolLogic';
-import { AdmissionApplication, GalleryItem } from '../types/school';
+import { AdmissionApplication, AnnouncementItem, GalleryItem } from '../types/school';
 
 test('evaluatePasswordStrength scores password complexity accurately', () => {
   const weak = evaluatePasswordStrength('abc');
@@ -126,3 +127,50 @@ test('filterAdmissions and convertAdmissionsToCsv filter and format records prop
   assert.ok(csv.includes('"Kavin Prakash"'));
   assert.ok(csv.includes('"ACCEPTED"'));
 });
+
+test('sortAndFilterActiveAnnouncements filters inactive items and prioritizes urgent updates first', () => {
+  const sample: AnnouncementItem[] = [
+    {
+      id: 'ann-1',
+      title: 'Standard Academic Notice',
+      category: 'Academics',
+      priority: 'standard',
+      isUrgent: false,
+      active: true,
+      date: '2026-03-20',
+      authorUid: 'admin-1',
+      createdAt: '2026-03-20T10:00:00.000Z',
+      updatedAt: '2026-03-20T10:00:00.000Z',
+    },
+    {
+      id: 'ann-2',
+      title: 'Urgent Pre-Admission Counseling Window Extended',
+      category: 'Admissions',
+      priority: 'urgent',
+      isUrgent: true,
+      active: true,
+      date: '2026-03-18',
+      authorUid: 'admin-1',
+      createdAt: '2026-03-18T10:00:00.000Z',
+      updatedAt: '2026-03-18T10:00:00.000Z',
+    },
+    {
+      id: 'ann-3',
+      title: 'Archived Notice',
+      category: 'General',
+      priority: 'urgent',
+      isUrgent: true,
+      active: false,
+      date: '2026-03-25',
+      authorUid: 'admin-1',
+      createdAt: '2026-03-25T10:00:00.000Z',
+      updatedAt: '2026-03-25T10:00:00.000Z',
+    },
+  ];
+
+  const sorted = sortAndFilterActiveAnnouncements(sample);
+  assert.equal(sorted.length, 2);
+  assert.equal(sorted[0].id, 'ann-2');
+  assert.equal(sorted[1].id, 'ann-1');
+});
+

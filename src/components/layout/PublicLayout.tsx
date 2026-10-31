@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   Lock,
@@ -11,17 +11,38 @@ import {
   MessageCircle,
   Menu,
   X,
+  Megaphone,
+  Pause,
+  Play,
 } from 'lucide-react';
 import { useSchoolData } from '../../context/SchoolDataContext';
+import { sortAndFilterActiveAnnouncements } from '../../utils/schoolLogic';
 
 export const PublicLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { siteConfig, galleryItems, theme, toggleTheme } = useSchoolData();
+  const { siteConfig, announcements, isAdminUnlocked, theme, toggleTheme } = useSchoolData();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [tickerPaused, setTickerPaused] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
-  const announcements = galleryItems.filter((i) => i.section === 'announcements');
+  const activeAnnouncements = useMemo(
+    () => sortAndFilterActiveAnnouncements(announcements),
+    [announcements]
+  );
+
+  const hasUrgentUpdate = useMemo(
+    () => activeAnnouncements.some((a) => a.isUrgent || a.priority === 'urgent'),
+    [activeAnnouncements]
+  );
+
+  const marqueeStream = useMemo(
+    () =>
+      activeAnnouncements.length > 0
+        ? [...activeAnnouncements, ...activeAnnouncements]
+        : [],
+    [activeAnnouncements]
+  );
 
   useEffect(() => {
     const onScroll = () => {
@@ -77,6 +98,157 @@ export const PublicLayout: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors">
+      {/* Real-Time News & Urgent Announcements Marquee Ticker at the Top of PublicLayout */}
+      <div
+        data-testid="realtime-announcements-ticker"
+        role="region"
+        aria-label="Real-time school news and urgent announcements ticker"
+        className="border-b border-slate-200 dark:border-slate-800/90 bg-slate-900 text-slate-100 px-4 sm:px-6 py-2"
+      >
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 text-xs">
+          {/* Left: Live Status Indicator + Marquee Track */}
+          <div className="flex items-center gap-3 overflow-hidden flex-1 min-w-0">
+            <span
+              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded font-mono text-[11px] font-bold tracking-wider uppercase whitespace-nowrap shrink-0 ${
+                hasUrgentUpdate
+                  ? 'bg-amber-500 text-slate-950'
+                  : 'bg-slate-800 text-amber-400 border border-slate-700'
+              }`}
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  hasUrgentUpdate ? 'bg-slate-950 animate-ping' : 'bg-emerald-400 animate-pulse'
+                }`}
+              />
+              <Megaphone className="w-3 h-3" />
+              <span>{hasUrgentUpdate ? 'Urgent Updates' : 'Live Ticker'}</span>
+            </span>
+
+            <div className="overflow-hidden whitespace-nowrap flex-1">
+              {marqueeStream.length > 0 ? (
+                <div
+                  className="animate-marquee inline-flex items-center gap-10 text-slate-300"
+                  style={{
+                    animationPlayState: tickerPaused ? 'paused' : 'running',
+                  }}
+                >
+                  {marqueeStream.map((ann, idx) => {
+                    const isUrgent = ann.isUrgent || ann.priority === 'urgent';
+                    const content = (
+                      <span className="inline-flex items-center gap-2.5">
+                        {isUrgent && (
+                          <span className="px-1.5 py-0.2 rounded bg-rose-500/20 border border-rose-400/40 text-rose-300 font-mono text-[10px] font-bold uppercase tracking-wider">
+                            URGENT
+                          </span>
+                        )}
+                        <span className="text-amber-400/90 font-mono text-[11px] uppercase tracking-wide">
+                          [{ann.category}]
+                        </span>
+                        <span
+                          className={`font-medium ${
+                            isUrgent ? 'text-white font-semibold' : 'text-slate-200'
+                          }`}
+                        >
+                          {ann.title}
+                        </span>
+                        <span aria-hidden="true" className="text-slate-600">
+                          ·
+                        </span>
+                        <span className="font-mono text-[11px] text-slate-400">{ann.date}</span>
+                      </span>
+                    );
+
+                    return ann.link ? (
+                      <Link
+                        key={`${ann.id}-${idx}`}
+                        to={ann.link}
+                        className="hover:text-amber-300 transition-colors"
+                      >
+                        {content}
+                      </Link>
+                    ) : (
+                      <span key={`${ann.id}-${idx}`}>{content}</span>
+                    );
+                  })}
+                </div>
+              ) : (
+                <span className="text-slate-400">
+                  Admissions open for 2026–2027 Academic Session (Day Scholar &amp; Hostel).
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Right: Pause/Play Ticker Control, Quick Links, Admin Post Shortcut & Theme Switch */}
+          <div className="flex items-center gap-3 text-slate-300 shrink-0">
+            <button
+              type="button"
+              data-testid="ticker-pause-toggle"
+              onClick={() => setTickerPaused((prev) => !prev)}
+              aria-label={tickerPaused ? 'Resume announcement ticker' : 'Pause announcement ticker'}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors cursor-pointer"
+              title={tickerPaused ? 'Resume Ticker' : 'Pause Ticker'}
+            >
+              {tickerPaused ? <Play className="w-3 h-3 text-amber-400" /> : <Pause className="w-3 h-3" />}
+              <span className="hidden sm:inline text-[11px]">
+                {tickerPaused ? 'Play' : 'Pause'}
+              </span>
+            </button>
+
+            <div className="hidden lg:flex items-center gap-3 text-slate-400">
+              <Link
+                to="/galleries?tab=events"
+                className="hover:text-white whitespace-nowrap shrink-0"
+              >
+                Events
+              </Link>
+              <span aria-hidden="true">·</span>
+              <Link
+                to="/galleries?tab=sports"
+                className="hover:text-white whitespace-nowrap shrink-0"
+              >
+                Sports
+              </Link>
+              <span aria-hidden="true">·</span>
+              <Link
+                to="/galleries?tab=achievements"
+                className="hover:text-white whitespace-nowrap shrink-0"
+              >
+                Achievements
+              </Link>
+            </div>
+
+            {isAdminUnlocked && (
+              <Link
+                to="/admin?module=ticker"
+                className="hidden md:inline-flex items-center gap-1 px-2 py-1 rounded bg-amber-500/20 border border-amber-400/40 text-amber-300 hover:bg-amber-500/30 font-semibold whitespace-nowrap shrink-0"
+              >
+                + Post Urgent
+              </Link>
+            )}
+
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800 text-slate-200 hover:bg-slate-700 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+            >
+              {theme === 'dark' ? (
+                <>
+                  <Sun className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Light</span>
+                </>
+              ) : (
+                <>
+                  <Moon className="w-3.5 h-3.5 text-sky-300" />
+                  <span>Dark</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Strict 3-Zone Top Bar Contract Header */}
       <header
         className={`sticky top-0 z-40 flex items-center justify-between gap-8 px-6 transition-all duration-150 border-b border-slate-200 dark:border-slate-800/90 bg-white/95 dark:bg-slate-950/95 ${
@@ -195,74 +367,6 @@ export const PublicLayout: React.FC<{ children: React.ReactNode }> = ({ children
           </div>
         </div>
       )}
-
-      {/* Secondary Utility Strip below Header (Quick Section Links, Announcements Ticker & Theme Switch) */}
-      <div className="border-b border-slate-200 dark:border-slate-800/80 bg-slate-100 dark:bg-slate-900/70 px-6 py-2">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4 text-xs">
-          {/* News & Announcements Ticker */}
-          <div className="flex items-center gap-3 overflow-hidden flex-1 min-w-[240px]">
-            <span className="font-semibold text-amber-600 dark:text-amber-400 whitespace-nowrap shrink-0">
-              Announcements:
-            </span>
-            <div className="overflow-hidden whitespace-nowrap flex-1">
-              <div className="animate-marquee inline-flex items-center gap-8 text-slate-600 dark:text-slate-300">
-                {announcements.map((ann) => (
-                  <span key={ann.id} className="inline-flex items-center gap-2">
-                    <span className="font-medium text-slate-900 dark:text-slate-100">
-                      {ann.title}
-                    </span>
-                    <span aria-hidden="true">·</span>
-                    <span>{ann.date}</span>
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Direct Sub-Section Links & Theme Switcher */}
-          <div className="flex items-center gap-4 text-slate-600 dark:text-slate-300 shrink-0">
-            <Link
-              to="/galleries?tab=events"
-              className="hover:text-slate-900 dark:hover:text-white whitespace-nowrap shrink-0"
-            >
-              Events
-            </Link>
-            <span aria-hidden="true">·</span>
-            <Link
-              to="/galleries?tab=sports"
-              className="hover:text-slate-900 dark:hover:text-white whitespace-nowrap shrink-0"
-            >
-              Sports
-            </Link>
-            <span aria-hidden="true">·</span>
-            <Link
-              to="/galleries?tab=achievements"
-              className="hover:text-slate-900 dark:hover:text-white whitespace-nowrap shrink-0"
-            >
-              Achievements
-            </Link>
-            <span aria-hidden="true">·</span>
-            <button
-              type="button"
-              onClick={toggleTheme}
-              aria-label={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-            >
-              {theme === 'dark' ? (
-                <>
-                  <Sun className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Light</span>
-                </>
-              ) : (
-                <>
-                  <Moon className="w-3.5 h-3.5 text-slate-700" />
-                  <span>Dark</span>
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
 
       {/* Main Content */}
       <main className="flex-1">{children}</main>

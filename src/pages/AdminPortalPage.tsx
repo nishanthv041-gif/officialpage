@@ -52,6 +52,7 @@ export const AdminPortalPage: React.FC = () => {
   const {
     siteConfig,
     galleryItems,
+    announcements,
     admissions,
     contactMessages,
     admins,
@@ -67,6 +68,10 @@ export const AdminPortalPage: React.FC = () => {
     addGalleryItem,
     deleteGalleryItem,
     reorderGalleryItem,
+    addAnnouncement,
+    toggleAnnouncementUrgent,
+    toggleAnnouncementActive,
+    deleteAnnouncement,
     uploadMediaFile,
     updateAdmissionStatus,
     deleteAdmission,
@@ -107,6 +112,13 @@ export const AdminPortalPage: React.FC = () => {
   const [newItemDesc, setNewItemDesc] = useState('');
   const [newItemImage, setNewItemImage] = useState('');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+  // Real-time Announcements Collection Composer State
+  const [tickerTitle, setTickerTitle] = useState('');
+  const [tickerCategory, setTickerCategory] = useState('Admissions');
+  const [tickerLink, setTickerLink] = useState('/admissions');
+  const [tickerDate, setTickerDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [tickerUrgent, setTickerUrgent] = useState(true);
 
   // School Info Form State
   const [schoolForm, setSchoolForm] = useState(siteConfig);
@@ -602,6 +614,163 @@ export const AdminPortalPage: React.FC = () => {
                       <span>→</span>
                     </button>
                   </div>
+                </div>
+              </div>
+
+              {/* Real-Time News & Urgent Announcements Ticker Composer (Firestore announcements collection) */}
+              <div
+                data-testid="admin-announcements-manager"
+                className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 space-y-5"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h2 className="font-display text-lg font-bold text-slate-900 dark:text-white">
+                      Real-Time News &amp; Urgent Announcements Ticker (`announcements` Collection)
+                    </h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Broadcast urgent school updates immediately to the top marquee ticker across all public pages.
+                    </p>
+                  </div>
+                  <span className="px-2.5 py-1 rounded bg-amber-500/15 text-amber-500 font-mono text-xs font-semibold">
+                    {announcements.filter((a) => a.active).length} Active Ticker Updates
+                  </span>
+                </div>
+
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!tickerTitle.trim()) return;
+                    await addAnnouncement({
+                      title: tickerTitle,
+                      category: tickerCategory,
+                      isUrgent: tickerUrgent,
+                      date: tickerDate,
+                      link: tickerLink,
+                    });
+                    setTickerTitle('');
+                  }}
+                  className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-slate-50 dark:bg-slate-950/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800"
+                >
+                  <div className="md:col-span-5">
+                    <label className="block text-[11px] font-semibold text-slate-500 mb-1">
+                      Announcement Headline *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      data-testid="urgent-announcement-title-input"
+                      value={tickerTitle}
+                      onChange={(e) => setTickerTitle(e.target.value)}
+                      placeholder="e.g., URGENT: Class XI Bio-Maths Entrance Slot Extended to Friday"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-[11px] font-semibold text-slate-500 mb-1">
+                      Category
+                    </label>
+                    <select
+                      value={tickerCategory}
+                      onChange={(e) => setTickerCategory(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs"
+                    >
+                      <option value="Admissions">Admissions</option>
+                      <option value="Academics">Academics</option>
+                      <option value="Examinations">Examinations</option>
+                      <option value="Sports">Sports</option>
+                      <option value="Hostel">Hostel</option>
+                      <option value="Achievements">Achievements</option>
+                    </select>
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-[11px] font-semibold text-slate-500 mb-1">
+                      Target Page Link
+                    </label>
+                    <input
+                      type="text"
+                      value={tickerLink}
+                      onChange={(e) => setTickerLink(e.target.value)}
+                      placeholder="/admissions"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs"
+                    />
+                  </div>
+                  <div className="md:col-span-3 flex items-center justify-between gap-2">
+                    <label className="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-500 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        data-testid="urgent-announcement-checkbox"
+                        checked={tickerUrgent}
+                        onChange={(e) => setTickerUrgent(e.target.checked)}
+                        className="w-4 h-4 accent-rose-500"
+                      />
+                      <span>Urgent</span>
+                    </label>
+                    <button
+                      type="submit"
+                      data-testid="post-urgent-announcement-btn"
+                      className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-xs whitespace-nowrap cursor-pointer"
+                    >
+                      Post Live Update
+                    </button>
+                  </div>
+                </form>
+
+                <div className="space-y-2">
+                  {announcements.map((ann) => (
+                    <div
+                      key={ann.id}
+                      className="flex flex-wrap items-center justify-between gap-3 px-3.5 py-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/50 text-xs"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <span
+                          className={`px-2 py-0.5 rounded font-mono text-[10px] font-bold uppercase ${
+                            ann.isUrgent
+                              ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                              : 'bg-slate-200 dark:bg-slate-800 text-slate-500'
+                          }`}
+                        >
+                          {ann.isUrgent ? 'URGENT' : 'STANDARD'}
+                        </span>
+                        <span className="font-mono text-[11px] text-amber-500">
+                          [{ann.category}]
+                        </span>
+                        <span
+                          className={`truncate font-medium ${
+                            ann.active
+                              ? 'text-slate-900 dark:text-slate-100'
+                              : 'line-through text-slate-400'
+                          }`}
+                        >
+                          {ann.title}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => toggleAnnouncementUrgent(ann.id)}
+                          className="px-2.5 py-1 rounded bg-slate-200 dark:bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-[11px] font-semibold cursor-pointer"
+                        >
+                          {ann.isUrgent ? 'Set Standard' : 'Make Urgent'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => toggleAnnouncementActive(ann.id)}
+                          className="px-2.5 py-1 rounded bg-slate-200 dark:bg-slate-800 text-[11px] font-semibold cursor-pointer"
+                        >
+                          {ann.active ? 'Hide' : 'Show'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteAnnouncement(ann.id)}
+                          aria-label={`Delete announcement ${ann.title}`}
+                          className="p-1.5 rounded bg-rose-500/15 hover:bg-rose-500 text-rose-400 hover:text-white cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>

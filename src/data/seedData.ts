@@ -1,6 +1,7 @@
 import {
   AdmissionApplication,
   AdminUserRecord,
+  AnnouncementItem,
   ContactMessage,
   GalleryItem,
   SiteConfig,
@@ -735,3 +736,63 @@ export const INITIAL_ADMINS: AdminUserRecord[] = [
     createdAt: '2026-01-01T00:00:00.000Z',
   },
 ];
+
+export const INITIAL_ANNOUNCEMENTS: AnnouncementItem[] = [
+  {
+    id: 'rt-ann-1',
+    title:
+      'URGENT: Pre-Admission Counseling & Scholarship Entrance Slot Booking Open for 2026–2027 Batch (Classes LKG to XI)',
+    category: 'Admissions',
+    priority: 'urgent',
+    isUrgent: true,
+    active: true,
+    date: '2026-03-25',
+    link: '/admissions',
+    authorUid: 'bootstrap-super-admin',
+    createdAt: '2026-03-25T09:00:00.000Z',
+    updatedAt: '2026-03-25T09:00:00.000Z',
+  },
+  {
+    id: 'rt-ann-2',
+    title:
+      'SRT Universal Scholars Clinch First Prize at Erode District Higher Secondary STEM & Robotics Exhibition',
+    category: 'Achievements',
+    priority: 'standard',
+    isUrgent: false,
+    active: true,
+    date: '2026-03-18',
+    link: '/galleries?tab=achievements',
+    authorUid: 'bootstrap-super-admin',
+    createdAt: '2026-03-18T10:00:00.000Z',
+    updatedAt: '2026-03-18T10:00:00.000Z',
+  },
+  {
+    id: 'rt-ann-3',
+    title:
+      'Integrated NEET, JEE (Main) & CUET Foundation Bridge Course Commences April 10, 2026 for Incoming Class XI Scholars',
+    category: 'Academics',
+    priority: 'urgent',
+    isUrgent: true,
+    active: true,
+    date: '2026-03-15',
+    link: '/academics',
+    authorUid: 'bootstrap-super-admin',
+    createdAt: '2026-03-15T11:30:00.000Z',
+    updatedAt: '2026-03-15T11:30:00.000Z',
+  },
+  {
+    id: 'rt-ann-4',
+    title:
+      'Residential Hostel AC & Non-AC Wing Room Allotment & Campus Tour Schedule Released for Outstation Parents',
+    category: 'Hostel',
+    priority: 'standard',
+    isUrgent: false,
+    active: true,
+    date: '2026-03-10',
+    link: '/about',
+    authorUid: 'bootstrap-super-admin',
+    createdAt: '2026-03-10T08:00:00.000Z',
+    updatedAt: '2026-03-10T08:00:00.000Z',
+  },
+];
+

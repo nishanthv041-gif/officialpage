@@ -123,3 +123,20 @@ export interface AdminUserRecord {
   role: 'super_admin' | 'editor';
   createdAt: string;
 }
+
+export type AnnouncementPriority = 'urgent' | 'standard';
+
+export interface AnnouncementItem {
+  id: string;
+  title: string;
+  category: string;
+  priority: AnnouncementPriority;
+  isUrgent: boolean;
+  active: boolean;
+  date: string;
+  link?: string;
+  authorUid: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
