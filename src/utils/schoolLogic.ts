@@ -184,3 +184,38 @@ export function sortAndFilterActiveAnnouncements<
     });
 }
 
+export function resolveSpaRouteTarget(
+  pathname: string,
+  search: string,
+  hash: string
+): string | null {
+  const cleanHash = (hash || '').trim();
+  if (cleanHash.startsWith('#/')) {
+    const targetFromHash = cleanHash.slice(1);
+    if (targetFromHash && targetFromHash !== pathname) {
+      return targetFromHash;
+    }
+  } else if (cleanHash.toLowerCase() === '#admin') {
+    return '/admin';
+  }
+
+  const params = new URLSearchParams(search || '');
+  const pageParam = (params.get('page') || params.get('route') || '').trim().toLowerCase();
+  if (pageParam === 'admin' || pageParam === '/admin' || params.get('admin') === '1') {
+    params.delete('page');
+    params.delete('route');
+    params.delete('admin');
+    const remaining = params.toString();
+    return remaining ? `/admin?${remaining}` : '/admin';
+  }
+
+  // Normalize trailing slash or uppercase /Admin variations
+  const trimmedPath = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
+  if (trimmedPath.toLowerCase() === '/admin' && pathname !== '/admin') {
+    return `/admin${search || ''}`;
+  }
+
+  return null;
+}
+
+

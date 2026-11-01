@@ -227,6 +227,14 @@ export const PublicLayout: React.FC<{ children: React.ReactNode }> = ({ children
               </Link>
             )}
 
+            <Link
+              to="/admin"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-amber-400 font-semibold transition-colors whitespace-nowrap shrink-0"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span>Admin</span>
+            </Link>
+
             <button
               type="button"
               onClick={toggleTheme}
@@ -363,6 +371,10 @@ export const PublicLayout: React.FC<{ children: React.ReactNode }> = ({ children
             </Link>
             <Link to="/contact" className="py-1.5 text-slate-800 dark:text-slate-100">
               Contact &amp; Location Map
+            </Link>
+            <Link to="/admin" className="py-1.5 text-amber-600 dark:text-amber-400 font-semibold inline-flex items-center gap-1.5">
+              <Lock className="w-3.5 h-3.5" />
+              <span>Admin Portal (/admin)</span>
             </Link>
           </div>
         </div>
@@ -506,10 +518,10 @@ export const PublicLayout: React.FC<{ children: React.ReactNode }> = ({ children
                 to="/admin"
                 aria-label="Admin Portal Login"
                 title="Admin Portal"
-                className="p-1.5 rounded hover:bg-slate-800 text-slate-500 hover:text-amber-400 transition-colors inline-flex items-center gap-1"
+                className="px-2.5 py-1 rounded bg-slate-800/80 hover:bg-amber-500 text-slate-300 hover:text-slate-950 font-medium transition-colors inline-flex items-center gap-1.5"
               >
                 <Lock className="w-3.5 h-3.5" />
-                <span className="sr-only">Admin</span>
+                <span>Admin Portal</span>
               </Link>
             </div>
           </div>

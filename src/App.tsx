@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { SchoolDataProvider } from './context/SchoolDataContext';
 import { PublicLayout } from './components/layout/PublicLayout';
 import { ToastContainer } from './components/common/ToastContainer';
@@ -15,6 +15,25 @@ import { GalleriesPage } from './pages/GalleriesPage';
 import { PreAdmissionPage } from './pages/PreAdmissionPage';
 import { ContactLocationPage } from './pages/ContactLocationPage';
 import { AdminPortalPage } from './pages/AdminPortalPage';
+import { resolveSpaRouteTarget } from './utils/schoolLogic';
+
+function SpaRouteNormalizer() {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const normalizedTarget = resolveSpaRouteTarget(
+      location.pathname,
+      location.search,
+      location.hash
+    );
+    if (normalizedTarget) {
+      navigate(normalizedTarget, { replace: true });
+    }
+  }, [location.pathname, location.search, location.hash, navigate]);
+
+  return null;
+}
 
 export default function App() {
   const [bootLoading, setBootLoading] = useState<boolean>(() => {
@@ -50,9 +69,11 @@ export default function App() {
       )}
 
       <BrowserRouter>
+        <SpaRouteNormalizer />
         <Routes>
           {/* Protected / Full-Screen Admin Route */}
           <Route path="/admin" element={<AdminPortalPage />} />
+          <Route path="/admin/*" element={<AdminPortalPage />} />
 
           {/* Public School Website Routes */}
           <Route

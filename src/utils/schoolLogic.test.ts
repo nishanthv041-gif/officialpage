@@ -9,6 +9,7 @@ import {
   filterAdmissions,
   convertAdmissionsToCsv,
   sortAndFilterActiveAnnouncements,
+  resolveSpaRouteTarget,
 } from './schoolLogic';
 import { AdmissionApplication, AnnouncementItem, GalleryItem } from '../types/school';
 
@@ -173,4 +174,15 @@ test('sortAndFilterActiveAnnouncements filters inactive items and prioritizes ur
   assert.equal(sorted[0].id, 'ann-2');
   assert.equal(sorted[1].id, 'ann-1');
 });
+
+test('resolveSpaRouteTarget normalizes /admin hash, query, and trailing-slash variations', () => {
+  assert.equal(resolveSpaRouteTarget('/', '', '#/admin'), '/admin');
+  assert.equal(resolveSpaRouteTarget('/', '', '#admin'), '/admin');
+  assert.equal(resolveSpaRouteTarget('/', '?page=admin', ''), '/admin');
+  assert.equal(resolveSpaRouteTarget('/', '?admin=1&module=settings', ''), '/admin?module=settings');
+  assert.equal(resolveSpaRouteTarget('/admin/', '', ''), '/admin');
+  assert.equal(resolveSpaRouteTarget('/Admin', '', ''), '/admin');
+  assert.equal(resolveSpaRouteTarget('/admin', '', ''), null);
+});
+
 
