@@ -33,6 +33,24 @@ export interface FeatureToggles {
   darkModeDefault: boolean;
   maintenanceMode: boolean;
   enable3DHero: boolean;
+  showHomeWelcome?: boolean;
+  showHomePillars?: boolean;
+  showHomeAchievements?: boolean;
+  showHomeEventsSports?: boolean;
+  showHomePhotoShowcase?: boolean;
+  showHomeCampusTour?: boolean;
+  showHomeTestimonials?: boolean;
+  showHomeDownloads?: boolean;
+  showHomeFaq?: boolean;
+  showHomeCtaBanner?: boolean;
+}
+
+export interface HomeShowcasePhoto {
+  id: string;
+  title: string;
+  category?: string;
+  caption: string;
+  imageUrl: string;
 }
 
 export interface SiteConfig {
@@ -41,11 +59,14 @@ export interface SiteConfig {
   location: string;
   heroHeadline: string;
   heroSubtext: string;
+  heroBannerImage?: string;
   welcomeTitle: string;
   welcomeMessage: string;
   principalName: string;
   principalTitle: string;
   principalMessage: string;
+  principalPhotoUrl?: string;
+  homeShowcaseImages?: HomeShowcasePhoto[];
   vision: string;
   mission: string;
   history: string;

@@ -2,7 +2,19 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
-import defaultFirebaseConfig from '../../firebase-applet-config.json';
+
+const defaultFirebaseConfig = {
+  projectId: 'clear-bruin-1hl8x',
+  appId: '1:937099412606:web:b07a5ac074d559e87ec42f',
+  apiKey: 'AIzaSyCPZkjZt63rd-d5JA_y-kr1TXzvkxlsDhk',
+  authDomain: 'clear-bruin-1hl8x.firebaseapp.com',
+  firestoreDatabaseId: 'ai-studio-srtuniversalscho-2b2e4538-717e-4547-9b0c-34b5459682ed',
+  storageBucket: 'clear-bruin-1hl8x.firebasestorage.app',
+  messagingSenderId: '937099412606',
+  measurementId: '',
+  oAuthClientId: '937099412606-m369qqnhnih7k2kkdgq5ebm9o9uedufc.apps.googleusercontent.com',
+  recaptchaSiteKey: '',
+};
 
 export const CUSTOM_FIREBASE_CONFIG_STORAGE_KEY = 'srt_custom_firebase_config_v1';
 

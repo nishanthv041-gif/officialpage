@@ -99,10 +99,62 @@ export const INITIAL_SITE_CONFIG: SiteConfig = {
   welcomeTitle: 'Excellence Rooted in Character & Scientific Inquiry',
   welcomeMessage:
     'Founded with the mission of bringing world-class Higher Secondary education to Sathyamangalam and the surrounding Bhavani Sagar valley, SRT Universal Hr. Sec. School blends rigorous Tamil Nadu State Board & competitive exam preparation (NEET, JEE, CUET, CA Foundation) with holistic character formation. Our 18-acre green campus provides an inspiring sanctuary where curiosity turns into leadership.',
-  principalName: 'Dr. S.enthilnathan M.Sc., M.Phil., M.Ed., Ph.D.',
+  principalName: 'Dr. S. Senthilnathan M.Sc., M.Phil., M.Ed., Ph.D.',
   principalTitle: 'Principal & Academic Director',
   principalMessage:
     'At SRT Universal Higher Secondary School, we believe every student carries an extraordinary spark. Whether a Day Scholar from Sathyamangalam or a Residential Hostel scholar from across Tamil Nadu, our faculty mentors each learner individually—balancing conceptual mastery in science, mathematics, and commerce with ethics, sportsmanship, and public speaking.',
+  heroBannerImage: createEditorialSvgDataUri(
+    'SRT Universal Hr. Sec. School Campus',
+    '18-Acre Eco-Smart Sanctuary · Sathyamangalam, Erode District',
+    '#f59e0b',
+    '#1e3a8a',
+    'campus'
+  ),
+  principalPhotoUrl: createEditorialSvgDataUri(
+    'Dr. S. Senthilnathan M.Sc., M.Phil., Ph.D.',
+    'Principal & Academic Director · SRT Universal Hr. Sec. School',
+    '#f59e0b',
+    '#0f172a',
+    'faculty'
+  ),
+  homeShowcaseImages: [
+    {
+      id: 'home-photo-1',
+      title: 'Silver Jubilee Academic Block',
+      caption: '48 Digital Smart Classrooms overlooking the Western Ghats foothills',
+      imageUrl: createEditorialSvgDataUri(
+        'Silver Jubilee Academic Block',
+        'Smart Classrooms & Seminar Auditoriums · Sathyamangalam',
+        '#f59e0b',
+        '#1e3a8a',
+        'campus'
+      ),
+    },
+    {
+      id: 'home-photo-2',
+      title: 'Dr. A.P.J. Abdul Kalam STEM & Robotics Wing',
+      caption: 'Dedicated Physics, Chemistry, Biology, Computer & AI Laboratories',
+      imageUrl: createEditorialSvgDataUri(
+        'STEM & Robotics Laboratories',
+        'Higher Secondary Practical Research Wing',
+        '#38bdf8',
+        '#0f172a',
+        'lab'
+      ),
+    },
+    {
+      id: 'home-photo-3',
+      title: '400m Championship Sports & Athletics Complex',
+      caption: '8-Lane Track, Synthetic Kabaddi Courts, Football & Cricket Turf',
+      imageUrl: createEditorialSvgDataUri(
+        'Olympic Standard Sports Arena',
+        'Zonal Athletics, Kabaddi, Football & Cricket Complex',
+        '#10b981',
+        '#064e3b',
+        'sports'
+      ),
+    },
+  ],
   vision:
     'To nurture intellectually fearless, ethically grounded, and globally competent citizens who lead positive transformation in science, industry, and society.',
   mission:
@@ -148,6 +200,16 @@ export const INITIAL_SITE_CONFIG: SiteConfig = {
     darkModeDefault: true,
     maintenanceMode: false,
     enable3DHero: true,
+    showHomeWelcome: true,
+    showHomePillars: true,
+    showHomeAchievements: true,
+    showHomeEventsSports: true,
+    showHomePhotoShowcase: true,
+    showHomeCampusTour: true,
+    showHomeTestimonials: true,
+    showHomeDownloads: true,
+    showHomeFaq: true,
+    showHomeCtaBanner: true,
   },
 };
 

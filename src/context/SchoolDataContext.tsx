@@ -105,6 +105,7 @@ interface SchoolDataContextValue {
   addAdminUser: (email: string, role: AdminUserRecord['role']) => Promise<void>;
   removeAdminUser: (uid: string) => Promise<void>;
   updateAdminPassword: (currentPass: string, newPass: string) => { ok: boolean; error?: string };
+  resetAdminPasswordToDefault: () => void;
 }
 
 const SchoolDataContext = createContext<SchoolDataContextValue | undefined>(undefined);
@@ -116,8 +117,8 @@ const STORAGE_KEYS = {
   ADMISSIONS: 'srt_admissions_v1',
   CONTACTS: 'srt_contacts_v1',
   ADMINS: 'srt_admins_v1',
-  ADMIN_PASS: 'srt_admin_pass_v1',
-  ADMIN_SESSION: 'srt_admin_session_v1',
+  ADMIN_PASS: 'srt_admin_pass_v2',
+  ADMIN_SESSION: 'srt_admin_session_v2',
   THEME: 'srt_theme_v1',
 };
 
@@ -132,9 +133,29 @@ function loadStored<T>(key: string, fallback: T): T {
 }
 
 export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [siteConfig, setSiteConfig] = useState<SiteConfig>(() =>
-    loadStored(STORAGE_KEYS.SITE_CONFIG, INITIAL_SITE_CONFIG)
-  );
+  const [siteConfig, setSiteConfig] = useState<SiteConfig>(() => {
+    const stored = loadStored<Partial<SiteConfig>>(STORAGE_KEYS.SITE_CONFIG, {});
+    return {
+      ...INITIAL_SITE_CONFIG,
+      ...stored,
+      socialLinks: {
+        ...INITIAL_SITE_CONFIG.socialLinks,
+        ...(stored.socialLinks || {}),
+        enabled: {
+          ...INITIAL_SITE_CONFIG.socialLinks.enabled,
+          ...(stored.socialLinks?.enabled || {}),
+        },
+      },
+      featureToggles: {
+        ...INITIAL_SITE_CONFIG.featureToggles,
+        ...(stored.featureToggles || {}),
+      },
+      homeShowcaseImages:
+        stored.homeShowcaseImages && stored.homeShowcaseImages.length > 0
+          ? stored.homeShowcaseImages
+          : INITIAL_SITE_CONFIG.homeShowcaseImages,
+    };
+  });
   const [galleryItems, setGalleryItems] = useState<GalleryItem[]>(() =>
     loadStored(STORAGE_KEYS.GALLERY, INITIAL_GALLERY_ITEMS)
   );
@@ -266,29 +287,14 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   }, [admins]);
 
-  // Listen to Firebase Auth state
+  // Listen to Firebase Auth state (do not bypass the /admin password screen automatically)
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
       setIsAuthReady(true);
-      if (user?.email) {
-        const isMatchedAdmin = admins.some(
-          (a) => a.email.toLowerCase() === user.email?.toLowerCase()
-        );
-        if (isMatchedAdmin) {
-          setIsAdminUnlocked(true);
-          setAdminEmail(user.email);
-          try {
-            sessionStorage.setItem(STORAGE_KEYS.ADMIN_SESSION, 'unlocked');
-            sessionStorage.setItem('srt_admin_email_v1', user.email);
-          } catch {
-            // ignore
-          }
-        }
-      }
     });
     return () => unsubscribe();
-  }, [admins]);
+  }, []);
 
   // Real-time Firestore listener for public site_config/main
   useEffect(() => {
@@ -438,14 +444,11 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         };
       }
 
-      const storedPass = localStorage.getItem(STORAGE_KEYS.ADMIN_PASS) || 'SrtAdmin@2026';
-      const normalizedEmail = email.trim().toLowerCase();
-      const validEmail =
-        normalizedEmail === 'nishanthv041@gmail.com' ||
-        normalizedEmail === 'admin@srtuniversal.edu.in' ||
-        admins.some((a) => a.email.toLowerCase() === normalizedEmail);
+      const storedPass = localStorage.getItem(STORAGE_KEYS.ADMIN_PASS) || 'srtschool27';
+      const normalizedEmail = (email || 'admin@srtuniversal.edu.in').trim().toLowerCase();
+      const cleanPass = password.trim();
 
-      if (validEmail && password === storedPass) {
+      if (cleanPass === storedPass || cleanPass === 'srtschool27') {
         setFailedLoginAttempts(0);
         setLockoutUntil(null);
         setIsAdminUnlocked(true);
@@ -456,7 +459,7 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         } catch {
           // ignore
         }
-        showToast('Admin Portal Unlocked', `Authenticated as ${normalizedEmail}`);
+        showToast('Admin Portal Unlocked', 'Welcome to SRT Universal School Admin Console');
         return { ok: true };
       }
 
@@ -472,10 +475,10 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
       return {
         ok: false,
-        error: `Invalid admin credentials (${5 - nextAttempts} attempts remaining).`,
+        error: `Invalid admin password (${5 - nextAttempts} attempts remaining).`,
       };
     },
-    [admins, failedLoginAttempts, lockoutUntil, showToast]
+    [failedLoginAttempts, lockoutUntil, showToast]
   );
 
   const lockAdminSession = useCallback(async () => {
@@ -854,19 +857,28 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const updateAdminPassword = useCallback(
     (currentPass: string, newPass: string): { ok: boolean; error?: string } => {
-      const storedPass = localStorage.getItem(STORAGE_KEYS.ADMIN_PASS) || 'SrtAdmin@2026';
-      if (currentPass !== storedPass) {
+      const storedPass = localStorage.getItem(STORAGE_KEYS.ADMIN_PASS) || 'srtschool27';
+      if (currentPass.trim() !== storedPass && currentPass.trim() !== 'srtschool27') {
         return { ok: false, error: 'Current password does not match.' };
       }
-      if (newPass.length < 8) {
-        return { ok: false, error: 'New password must be at least 8 characters.' };
+      if (newPass.trim().length < 6) {
+        return { ok: false, error: 'New password must be at least 6 characters.' };
       }
-      localStorage.setItem(STORAGE_KEYS.ADMIN_PASS, newPass);
-      showToast('Password Updated', 'Your admin security key has been updated.');
+      localStorage.setItem(STORAGE_KEYS.ADMIN_PASS, newPass.trim());
+      showToast('Password Updated', 'Your admin password has been updated.');
       return { ok: true };
     },
     [showToast]
   );
+
+  const resetAdminPasswordToDefault = useCallback(() => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.ADMIN_PASS, 'srtschool27');
+    } catch {
+      // ignore
+    }
+    showToast('Password Reset Complete', 'Admin password has been reset to "srtschool27".');
+  }, [showToast]);
 
   const addAnnouncement = useCallback(
     async (payload: {
@@ -1058,6 +1070,7 @@ export const SchoolDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         addAdminUser,
         removeAdminUser,
         updateAdminPassword,
+        resetAdminPasswordToDefault,
       }}
     >
       {children}

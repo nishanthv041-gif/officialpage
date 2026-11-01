@@ -66,6 +66,7 @@ export const AdminPortalPage: React.FC = () => {
     lockAdminSession,
     updateSiteConfig,
     addGalleryItem,
+    updateGalleryItem,
     deleteGalleryItem,
     reorderGalleryItem,
     addAnnouncement,
@@ -80,11 +81,13 @@ export const AdminPortalPage: React.FC = () => {
     addAdminUser,
     removeAdminUser,
     updateAdminPassword,
+    resetAdminPasswordToDefault,
   } = useSchoolData();
 
-  // Login Screen State
+  // Login Screen State (Default password = "srtschool27")
   const [loginEmail, setLoginEmail] = useState('admin@srtuniversal.edu.in');
   const [loginPass, setLoginPass] = useState('');
+  const [showPassText, setShowPassText] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [lockVisualState, setLockVisualState] = useState<'locked' | 'error' | 'unlocked'>('locked');
 
@@ -113,6 +116,14 @@ export const AdminPortalPage: React.FC = () => {
   const [newItemImage, setNewItemImage] = useState('');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
+  // Inline Edit State for Existing Gallery Item
+  const [editingGalleryId, setEditingGalleryId] = useState<string | null>(null);
+  const [editItemTitle, setEditItemTitle] = useState('');
+  const [editItemCategory, setEditItemCategory] = useState('');
+  const [editItemDate, setEditItemDate] = useState('');
+  const [editItemDesc, setEditItemDesc] = useState('');
+  const [editItemImage, setEditItemImage] = useState('');
+
   // Real-time Announcements Collection Composer State
   const [tickerTitle, setTickerTitle] = useState('');
   const [tickerCategory, setTickerCategory] = useState('Admissions');
@@ -120,8 +131,17 @@ export const AdminPortalPage: React.FC = () => {
   const [tickerDate, setTickerDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [tickerUrgent, setTickerUrgent] = useState(true);
 
-  // School Info Form State
-  const [schoolForm, setSchoolForm] = useState(siteConfig);
+  // Home Page & School Info Form State
+  const [schoolForm, setSchoolForm] = useState<SiteConfig>(siteConfig);
+  const [showcaseTitle, setShowcaseTitle] = useState('');
+  const [showcaseCategory, setShowcaseCategory] = useState('Campus Life');
+  const [showcaseCaption, setShowcaseCaption] = useState('');
+  const [showcaseImageUrl, setShowcaseImageUrl] = useState('');
+  const [isUploadingHomePhoto, setIsUploadingHomePhoto] = useState(false);
+
+  React.useEffect(() => {
+    setSchoolForm(siteConfig);
+  }, [siteConfig]);
 
   // Settings Password & Admin Form State
   const [currentPassInput, setCurrentPassInput] = useState('');
@@ -163,7 +183,7 @@ export const AdminPortalPage: React.FC = () => {
     const res = await unlockAdminWithPasskey(loginEmail, loginPass);
     if (!res.ok) {
       setLockVisualState('error');
-      setLoginError(res.error || 'Authentication failed.');
+      setLoginError(res.error || 'Incorrect password. Enter "srtschool27" to unlock.');
       window.setTimeout(() => setLockVisualState('locked'), 1100);
       return;
     }
@@ -194,12 +214,93 @@ export const AdminPortalPage: React.FC = () => {
     try {
       const uploadedUrl = await uploadMediaFile(file, activeContentSection);
       setNewItemImage(uploadedUrl);
-      showToast('Image Ready', `Uploaded "${file.name}" for preview.`);
+      showToast('Photo Uploaded', `Uploaded "${file.name}" ready to publish.`);
     } catch {
       showToast('Upload Error', 'Could not read image file.', 'error');
     } finally {
       setIsUploadingImage(false);
     }
+  };
+
+  const handlePrincipalPhotoUpload = async (file: File | undefined) => {
+    if (!file) return;
+    setIsUploadingHomePhoto(true);
+    try {
+      const uploadedUrl = await uploadMediaFile(file, 'principal');
+      const nextForm = { ...schoolForm, principalPhotoUrl: uploadedUrl };
+      setSchoolForm(nextForm);
+      await updateSiteConfig({ principalPhotoUrl: uploadedUrl });
+      showToast('Principal Photo Updated', 'Principal portrait uploaded and saved to Home Page.');
+    } catch {
+      showToast('Upload Error', 'Could not upload principal photo.', 'error');
+    } finally {
+      setIsUploadingHomePhoto(false);
+    }
+  };
+
+  const handleShowcasePhotoUpload = async (file: File | undefined) => {
+    if (!file) return;
+    setIsUploadingHomePhoto(true);
+    try {
+      const uploadedUrl = await uploadMediaFile(file, 'home_showcase');
+      setShowcaseImageUrl(uploadedUrl);
+      showToast('Home Photo Ready', `Uploaded "${file.name}" for Home Page Showcase.`);
+    } catch {
+      showToast('Upload Error', 'Could not upload showcase photo.', 'error');
+    } finally {
+      setIsUploadingHomePhoto(false);
+    }
+  };
+
+  const handleAddHomeShowcasePhoto = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!showcaseTitle.trim()) return;
+    const fallbackSvg = createEditorialSvgDataUri(
+      showcaseTitle.trim(),
+      `${showcaseCategory} · SRT Universal School`,
+      '#f59e0b',
+      '#0f172a',
+      'campus'
+    );
+    const newPhoto = {
+      id: `home-photo-${Date.now()}`,
+      title: showcaseTitle.trim(),
+      category: showcaseCategory.trim() || 'Campus Life',
+      caption:
+        showcaseCaption.trim() ||
+        'SRT Universal Hr. Sec. School Campus Highlight, Sathyamangalam.',
+      imageUrl: showcaseImageUrl || fallbackSvg,
+    };
+    const updatedList = [newPhoto, ...(schoolForm.homeShowcaseImages || [])];
+    setSchoolForm({ ...schoolForm, homeShowcaseImages: updatedList });
+    await updateSiteConfig({ homeShowcaseImages: updatedList });
+    setShowcaseTitle('');
+    setShowcaseCaption('');
+    setShowcaseImageUrl('');
+    showToast('Home Page Photo Published', `"${newPhoto.title}" added to Home Page.`);
+  };
+
+  const handleReplaceShowcasePhotoFile = async (photoId: string, file: File | undefined) => {
+    if (!file) return;
+    setIsUploadingHomePhoto(true);
+    try {
+      const uploadedUrl = await uploadMediaFile(file, 'home_showcase');
+      const updatedList = (schoolForm.homeShowcaseImages || []).map((p) =>
+        p.id === photoId ? { ...p, imageUrl: uploadedUrl } : p
+      );
+      setSchoolForm({ ...schoolForm, homeShowcaseImages: updatedList });
+      await updateSiteConfig({ homeShowcaseImages: updatedList });
+      showToast('Home Photo Replaced', 'Home Page showcase photo updated.');
+    } finally {
+      setIsUploadingHomePhoto(false);
+    }
+  };
+
+  const handleDeleteShowcasePhoto = async (photoId: string) => {
+    const updatedList = (schoolForm.homeShowcaseImages || []).filter((p) => p.id !== photoId);
+    setSchoolForm({ ...schoolForm, homeShowcaseImages: updatedList });
+    await updateSiteConfig({ homeShowcaseImages: updatedList });
+    showToast('Photo Removed', 'Removed photo from Home Page showcase.', 'info');
   };
 
   const handleCreateGalleryItem = async (e: React.FormEvent) => {
@@ -229,6 +330,40 @@ export const AdminPortalPage: React.FC = () => {
     setNewItemSubtitle('');
     setNewItemDesc('');
     setNewItemImage('');
+  };
+
+  const startEditingGalleryItem = (item: GalleryItem) => {
+    setEditingGalleryId(item.id);
+    setEditItemTitle(item.title);
+    setEditItemCategory(item.category);
+    setEditItemDate(item.date);
+    setEditItemDesc(item.description);
+    setEditItemImage(item.imageUrl);
+  };
+
+  const handleSaveEditedGalleryItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingGalleryId || !editItemTitle.trim()) return;
+    await updateGalleryItem(editingGalleryId, {
+      title: editItemTitle.trim(),
+      category: editItemCategory.trim() || 'General',
+      date: editItemDate.trim() || '2026',
+      description: editItemDesc.trim(),
+      imageUrl: editItemImage,
+    });
+    setEditingGalleryId(null);
+  };
+
+  const handleEditGalleryFileUpload = async (file: File | undefined) => {
+    if (!file) return;
+    setIsUploadingImage(true);
+    try {
+      const uploadedUrl = await uploadMediaFile(file, activeContentSection);
+      setEditItemImage(uploadedUrl);
+      showToast('Replacement Photo Ready', `Uploaded "${file.name}". Click Save to apply.`);
+    } finally {
+      setIsUploadingImage(false);
+    }
   };
 
   const handleSaveSchoolInfo = async (e: React.FormEvent) => {
@@ -275,25 +410,28 @@ export const AdminPortalPage: React.FC = () => {
   };
 
   // ===========================================================================
-  // 1. FULL-SCREEN 3D ANIMATED SECURITY LOGIN GATE (WHEN LOCKED)
+  // 1. ADMIN PASSWORD GATE (ALWAYS SHOWN FIRST BEFORE OPENING /admin)
   // ===========================================================================
   if (!isAdminUnlocked) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center px-4 py-12">
+      <div
+        data-testid="admin-password-page"
+        className="min-h-screen bg-slate-950 text-slate-100 flex flex-col justify-center items-center px-4 py-12"
+      >
         <div
           className={`w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900/95 p-8 shadow-2xl space-y-6 transition-transform duration-150 ${
             lockVisualState === 'error' ? 'translate-x-2 border-rose-500/60' : ''
           }`}
         >
-          <div className="text-center space-y-1">
+          <div className="text-center space-y-1.5">
             <div className="text-xs font-mono uppercase tracking-widest text-amber-400">
-              Restricted Institutional Vault
+              Admin Password Verification Gate (/admin)
             </div>
             <h1 className="font-display text-2xl font-bold text-white">
-              {siteConfig.schoolName} — Admin
+              {siteConfig.schoolName} — Admin Login
             </h1>
             <p className="text-xs text-slate-400">
-              Authenticate with your Administrator Security Key or verified Firebase Google Account
+              Enter the Administrator Password to unlock Home Page Editing, Photo Uploads &amp; Settings
             </p>
           </div>
 
@@ -325,49 +463,78 @@ export const AdminPortalPage: React.FC = () => {
               />
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <label htmlFor="adminPass" className="block text-xs font-semibold text-slate-300">
-                  Admin Passkey
+                  Admin Password
                 </label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLoginEmail('admin@srtuniversal.edu.in');
-                    setLoginPass('SrtAdmin@2026');
-                  }}
-                  className="text-xs text-amber-400 hover:underline cursor-pointer"
-                >
-                  Auto-fill Default Key
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowPassText((prev) => !prev)}
+                    className="text-[11px] text-slate-400 hover:text-white cursor-pointer"
+                  >
+                    {showPassText ? 'Hide' : 'Show'}
+                  </button>
+                  <button
+                    type="button"
+                    data-testid="autofill-admin-pass-btn"
+                    onClick={() => {
+                      setLoginEmail('admin@srtuniversal.edu.in');
+                      setLoginPass('srtschool27');
+                      setLoginError(null);
+                    }}
+                    className="text-xs text-amber-400 hover:underline font-semibold cursor-pointer"
+                  >
+                    Auto-fill Key (srtschool27)
+                  </button>
+                </div>
               </div>
               <input
                 id="adminPass"
-                type="password"
+                data-testid="admin-password-input"
+                type={showPassText ? 'text' : 'password'}
                 required
                 value={loginPass}
                 onChange={(e) => setLoginPass(e.target.value)}
-                placeholder="Enter admin passkey (default: SrtAdmin@2026)"
-                className="w-full px-3.5 py-2.5 rounded-lg border border-slate-700 bg-slate-950 text-sm text-white focus:outline-none focus:border-amber-500"
+                placeholder="Enter admin password (srtschool27)"
+                className="w-full px-3.5 py-2.5 rounded-lg border border-slate-700 bg-slate-950 text-sm text-white focus:outline-none focus:border-amber-500 font-mono"
               />
             </div>
 
             <button
               type="submit"
+              data-testid="unlock-admin-btn"
               className="w-full py-3 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer"
             >
               <Lock className="w-4 h-4" />
-              <span>Unlock Admin Console</span>
+              <span>Unlock Admin Page</span>
             </button>
           </form>
 
           <div className="pt-4 border-t border-slate-800 space-y-3">
+            <div className="flex items-center justify-between gap-2 text-xs">
+              <span className="text-slate-400">Forgot or changed password?</span>
+              <button
+                type="button"
+                data-testid="reset-default-pass-login-btn"
+                onClick={() => {
+                  resetAdminPasswordToDefault();
+                  setLoginPass('srtschool27');
+                  setLoginError(null);
+                }}
+                className="text-amber-400 hover:underline font-semibold cursor-pointer"
+              >
+                Reset Password to &quot;srtschool27&quot;
+              </button>
+            </div>
+
             <button
               type="button"
               onClick={() => signInWithGoogle()}
               className="w-full py-2.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-xs font-semibold text-slate-200 transition-colors cursor-pointer"
             >
-              Sign in with Verified Google Admin Account
+              Link Verified Google Admin Account (Cloud Sync)
             </button>
 
             <div className="text-center">
@@ -382,10 +549,13 @@ export const AdminPortalPage: React.FC = () => {
   }
 
   // ===========================================================================
-  // 2. PROTECTED ADMIN DASHBOARD WORKSPACE (SIDEBAR + TOP BAR + VIEWPORT)
+  // 2. PROTECTED ADMIN DASHBOARD WORKSPACE (OPENED ONLY AFTER PASSWORD UNLOCK)
   // ===========================================================================
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex">
+    <div
+      data-testid="admin-dashboard-workspace"
+      className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex"
+    >
       {/* Sidebar Navigation (260px) */}
       <aside className="w-64 shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col justify-between p-5">
         <div className="space-y-6">
@@ -402,16 +572,17 @@ export const AdminPortalPage: React.FC = () => {
             {(
               [
                 ['overview', 'Dashboard Overview', LayoutDashboard],
+                ['school-info', 'Edit Home Page & Photos', Globe],
+                ['content', 'Galleries & Photo Upload', FolderKanban],
                 ['admissions', `Admissions (${pendingCount})`, Users],
-                ['content', 'Content Manager', FolderKanban],
-                ['school-info', 'School & Social Info', Globe],
                 ['inbox', `Contact Inbox (${unreadMessagesCount})`, Inbox],
-                ['settings', 'Settings & Roles', Settings],
+                ['settings', 'Settings & Password Reset', Settings],
               ] as [AdminModule, string, React.ElementType][]
             ).map(([modKey, label, Icon]) => (
               <button
                 key={modKey}
                 type="button"
+                data-testid={`nav-${modKey}`}
                 onClick={() => setActiveModule(modKey)}
                 className={`w-full px-3.5 py-2.5 rounded-lg text-xs font-semibold flex items-center gap-3 transition-colors cursor-pointer whitespace-nowrap ${
                   activeModule === modKey
@@ -435,6 +606,7 @@ export const AdminPortalPage: React.FC = () => {
           </Link>
           <button
             type="button"
+            data-testid="lock-admin-session-btn"
             onClick={lockAdminSession}
             className="w-full px-3.5 py-2 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 text-xs font-semibold flex items-center justify-center gap-2 cursor-pointer"
           >
@@ -457,6 +629,22 @@ export const AdminPortalPage: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setActiveModule('school-info')}
+              className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              <span>Edit Home Page &amp; Upload Photos</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveModule('settings')}
+              className="px-3.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0"
+            >
+              <Settings className="w-3.5 h-3.5" />
+              <span>Home Settings &amp; Password Reset</span>
+            </button>
             <button
               type="button"
               onClick={handleBackupJsonExport}
@@ -495,12 +683,14 @@ export const AdminPortalPage: React.FC = () => {
 
                 <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
                   <div className="text-xs text-slate-500 dark:text-slate-400">
-                    Rejected Applications
+                    Home Showcase Photos
                   </div>
-                  <div className="font-mono tabular-nums text-3xl font-bold text-rose-500 mt-1">
-                    {rejectedCount}
+                  <div className="font-mono tabular-nums text-3xl font-bold text-amber-400 mt-1">
+                    {(siteConfig.homeShowcaseImages || []).length}
                   </div>
-                  <div className="text-xs text-slate-400 mt-1">Archived requests</div>
+                  <div className="text-xs text-slate-400 mt-1">
+                    Displayed on Home Page showcase
+                  </div>
                 </div>
 
                 <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
@@ -577,24 +767,10 @@ export const AdminPortalPage: React.FC = () => {
                   <div className="grid grid-cols-1 gap-2.5">
                     <button
                       type="button"
-                      onClick={() => {
-                        setAdmissionTab('pending');
-                        setActiveModule('admissions');
-                      }}
-                      className="px-4 py-3 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-xs font-semibold text-left flex items-center justify-between transition-colors cursor-pointer"
+                      onClick={() => setActiveModule('school-info')}
+                      className="px-4 py-3 rounded-lg bg-amber-500/15 border border-amber-500/30 hover:bg-amber-500 hover:text-slate-950 text-xs font-semibold text-left flex items-center justify-between transition-colors cursor-pointer"
                     >
-                      <span>Review Pending Pre-Admissions ({pendingCount})</span>
-                      <span>→</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAdmissionTab('accepted');
-                        setActiveModule('admissions');
-                      }}
-                      className="px-4 py-3 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-emerald-500 hover:text-slate-950 text-xs font-semibold text-left flex items-center justify-between transition-colors cursor-pointer"
-                    >
-                      <span>Export Accepted Scholars CSV ({acceptedCount})</span>
+                      <span>Edit All Home Page Content &amp; Upload Home Photos</span>
                       <span>→</span>
                     </button>
                     <button
@@ -602,15 +778,26 @@ export const AdminPortalPage: React.FC = () => {
                       onClick={() => setActiveModule('content')}
                       className="px-4 py-3 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-xs font-semibold text-left flex items-center justify-between transition-colors cursor-pointer"
                     >
-                      <span>Publish New Event, Sport or Achievement Photo</span>
+                      <span>Upload &amp; Edit Events, Sports &amp; Achievements Photos</span>
                       <span>→</span>
                     </button>
                     <button
                       type="button"
-                      onClick={() => setActiveModule('school-info')}
+                      onClick={() => setActiveModule('settings')}
                       className="px-4 py-3 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-xs font-semibold text-left flex items-center justify-between transition-colors cursor-pointer"
                     >
-                      <span>Update Tagline, Counters &amp; Social Media Links</span>
+                      <span>Manage Home Page Sections &amp; Reset Admin Password</span>
+                      <span>→</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAdmissionTab('pending');
+                        setActiveModule('admissions');
+                      }}
+                      className="px-4 py-3 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-emerald-500 hover:text-slate-950 text-xs font-semibold text-left flex items-center justify-between transition-colors cursor-pointer"
+                    >
+                      <span>Review Pending Pre-Admissions ({pendingCount})</span>
                       <span>→</span>
                     </button>
                   </div>
@@ -1006,13 +1193,13 @@ export const AdminPortalPage: React.FC = () => {
                 ))}
               </div>
 
-              {/* Add New Content Item Form with Drag & Drop Image Upload */}
+              {/* Add New Content Item Form with Image Upload & Live Preview */}
               <form
                 onSubmit={handleCreateGalleryItem}
                 className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 space-y-4"
               >
                 <h2 className="font-display text-lg font-bold text-slate-900 dark:text-white">
-                  Add New Item to {activeContentSection.toUpperCase()}
+                  Add &amp; Upload New Photo to {activeContentSection.toUpperCase()}
                 </h2>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -1059,20 +1246,31 @@ export const AdminPortalPage: React.FC = () => {
                 />
 
                 <div className="flex flex-wrap items-center justify-between gap-4">
-                  <label className="px-4 py-2 rounded-lg border border-dashed border-slate-400 dark:border-slate-600 text-xs text-slate-600 dark:text-slate-300 inline-flex items-center gap-2 cursor-pointer hover:border-amber-500">
-                    <Upload className="w-4 h-4 text-amber-500" />
-                    <span>
-                      {isUploadingImage
-                        ? 'Uploading to Firebase Storage...'
-                        : 'Upload Photo (or auto-generate school card)'}
-                    </span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleFileUpload(e.target.files?.[0])}
-                      className="hidden"
-                    />
-                  </label>
+                  <div className="flex items-center gap-3">
+                    <label className="px-4 py-2 rounded-lg border border-dashed border-slate-400 dark:border-slate-600 text-xs text-slate-600 dark:text-slate-300 inline-flex items-center gap-2 cursor-pointer hover:border-amber-500">
+                      <Upload className="w-4 h-4 text-amber-500" />
+                      <span>
+                        {isUploadingImage
+                          ? 'Uploading Photo...'
+                          : 'Upload Photo from Device'}
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleFileUpload(e.target.files?.[0])}
+                        className="hidden"
+                      />
+                    </label>
+                    {newItemImage && (
+                      <div className="w-12 h-10 rounded overflow-hidden border border-amber-500/40 shrink-0">
+                        <ResilientImage
+                          src={newItemImage}
+                          alt="Upload Preview"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                  </div>
 
                   <button
                     type="submit"
@@ -1084,7 +1282,76 @@ export const AdminPortalPage: React.FC = () => {
                 </div>
               </form>
 
-              {/* Existing Section Items List with Reorder & Delete */}
+              {/* Inline Edit Modal/Card when editing an existing Gallery Item */}
+              {editingGalleryId && (
+                <form
+                  onSubmit={handleSaveEditedGalleryItem}
+                  className="rounded-xl border-2 border-amber-500/60 bg-amber-500/5 p-6 space-y-4 text-xs"
+                >
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-display text-base font-bold text-amber-500">
+                      Edit Item &amp; Replace Photo
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => setEditingGalleryId(null)}
+                      className="text-slate-400 hover:text-white cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <input
+                      type="text"
+                      required
+                      value={editItemTitle}
+                      onChange={(e) => setEditItemTitle(e.target.value)}
+                      placeholder="Title"
+                      className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+                    />
+                    <input
+                      type="text"
+                      value={editItemCategory}
+                      onChange={(e) => setEditItemCategory(e.target.value)}
+                      placeholder="Category"
+                      className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+                    />
+                    <input
+                      type="text"
+                      value={editItemDate}
+                      onChange={(e) => setEditItemDate(e.target.value)}
+                      placeholder="Date"
+                      className="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+                    />
+                  </div>
+                  <textarea
+                    rows={2}
+                    value={editItemDesc}
+                    onChange={(e) => setEditItemDesc(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+                  />
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <label className="px-3.5 py-2 rounded-lg border border-dashed border-amber-500/60 text-amber-500 inline-flex items-center gap-2 cursor-pointer">
+                      <Upload className="w-4 h-4" />
+                      <span>Upload Replacement Photo</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleEditGalleryFileUpload(e.target.files?.[0])}
+                        className="hidden"
+                      />
+                    </label>
+                    <button
+                      type="submit"
+                      className="px-5 py-2 rounded-lg bg-amber-500 text-slate-950 font-semibold cursor-pointer"
+                    >
+                      Save Item Changes
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Existing Section Items List with Edit, Reorder & Delete */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {sectionGalleryList.map((item) => (
                   <div
@@ -1108,6 +1375,13 @@ export const AdminPortalPage: React.FC = () => {
                       <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">
                         {item.description}
                       </p>
+                      <button
+                        type="button"
+                        onClick={() => startEditingGalleryItem(item)}
+                        className="text-[11px] text-amber-500 hover:underline font-semibold cursor-pointer pt-1"
+                      >
+                        Edit Text / Replace Photo
+                      </button>
                     </div>
                     <div className="flex flex-col gap-1 shrink-0">
                       <button
@@ -1146,150 +1420,414 @@ export const AdminPortalPage: React.FC = () => {
             </div>
           )}
 
-          {/* MODULE 4: SCHOOL INFO, COUNTERS & SOCIAL MEDIA MANAGER */}
+          {/* MODULE 4: EDIT ALL HOME PAGE CONTENT & UPLOAD HOME PAGE PHOTOS */}
           {activeModule === 'school-info' && (
-            <form
-              onSubmit={handleSaveSchoolInfo}
-              className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 space-y-6"
-            >
-              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-4">
-                <h2 className="font-display text-lg font-bold text-slate-900 dark:text-white">
-                  School Identity, Counters &amp; Social Media Links
-                </h2>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-xs inline-flex items-center gap-1.5 cursor-pointer"
+            <div className="space-y-8" data-testid="home-page-editor-module">
+              {/* Part A: Edit All Home Page Text, Principal Message & Photo, Counters & Contact Info */}
+              <form
+                onSubmit={handleSaveSchoolInfo}
+                className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 space-y-6"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
+                  <div>
+                    <h2 className="font-display text-lg font-bold text-slate-900 dark:text-white">
+                      Edit All Home Page Content, Principal Portrait &amp; School Details
+                    </h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Modify any headline, welcome message, principal message, counters, or upload a new Principal portrait.
+                    </p>
+                  </div>
+                  <button
+                    type="submit"
+                    data-testid="save-home-page-btn"
+                    className="px-5 py-2.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-xs inline-flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>Save All Home Page Changes</span>
+                  </button>
+                </div>
+
+                {/* Hero & Welcome Section Fields */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  <div className="space-y-1">
+                    <label className="font-semibold">School Name</label>
+                    <input
+                      type="text"
+                      value={schoolForm.schoolName}
+                      onChange={(e) =>
+                        setSchoolForm({ ...schoolForm, schoolName: e.target.value })
+                      }
+                      className="w-full px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-semibold">School Tagline</label>
+                    <input
+                      type="text"
+                      value={schoolForm.tagline}
+                      onChange={(e) => setSchoolForm({ ...schoolForm, tagline: e.target.value })}
+                      className="w-full px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                    />
+                  </div>
+                  <div className="sm:col-span-2 space-y-1">
+                    <label className="font-semibold">Home Page Hero Headline</label>
+                    <input
+                      type="text"
+                      value={schoolForm.heroHeadline}
+                      onChange={(e) =>
+                        setSchoolForm({ ...schoolForm, heroHeadline: e.target.value })
+                      }
+                      className="w-full px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                    />
+                  </div>
+                  <div className="sm:col-span-2 space-y-1">
+                    <label className="font-semibold">Home Page Hero Subtext</label>
+                    <textarea
+                      rows={2}
+                      value={schoolForm.heroSubtext}
+                      onChange={(e) =>
+                        setSchoolForm({ ...schoolForm, heroSubtext: e.target.value })
+                      }
+                      className="w-full px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                    />
+                  </div>
+                  <div className="sm:col-span-2 space-y-1">
+                    <label className="font-semibold">Home Welcome Section Title</label>
+                    <input
+                      type="text"
+                      value={schoolForm.welcomeTitle}
+                      onChange={(e) =>
+                        setSchoolForm({ ...schoolForm, welcomeTitle: e.target.value })
+                      }
+                      className="w-full px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                    />
+                  </div>
+                  <div className="sm:col-span-2 space-y-1">
+                    <label className="font-semibold">Home Welcome Message Paragraph</label>
+                    <textarea
+                      rows={3}
+                      value={schoolForm.welcomeMessage}
+                      onChange={(e) =>
+                        setSchoolForm({ ...schoolForm, welcomeMessage: e.target.value })
+                      }
+                      className="w-full px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                    />
+                  </div>
+                </div>
+
+                {/* Principal Desk & Principal Photo Upload */}
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-4 text-xs">
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      {schoolForm.principalPhotoUrl && (
+                        <div className="w-14 h-14 rounded-xl overflow-hidden border border-amber-500/40 shrink-0">
+                          <ResilientImage
+                            src={schoolForm.principalPhotoUrl}
+                            alt={schoolForm.principalName}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+                      <div>
+                        <div className="font-display text-sm font-bold text-slate-900 dark:text-white">
+                          Principal&apos;s Desk &amp; Portrait Photo
+                        </div>
+                        <div className="text-slate-500">
+                          Upload a new Principal photo or edit the Principal&apos;s message on the Home Page
+                        </div>
+                      </div>
+                    </div>
+
+                    <label className="px-4 py-2 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-500 font-semibold inline-flex items-center gap-2 cursor-pointer hover:bg-amber-500 hover:text-slate-950 transition-colors">
+                      <Upload className="w-4 h-4" />
+                      <span>
+                        {isUploadingHomePhoto ? 'Uploading...' : 'Upload Principal Photo'}
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handlePrincipalPhotoUpload(e.target.files?.[0])}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="font-semibold">Principal Name</label>
+                      <input
+                        type="text"
+                        value={schoolForm.principalName}
+                        onChange={(e) =>
+                          setSchoolForm({ ...schoolForm, principalName: e.target.value })
+                        }
+                        className="w-full px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-semibold">Principal Qualifications &amp; Title</label>
+                      <input
+                        type="text"
+                        value={schoolForm.principalTitle}
+                        onChange={(e) =>
+                          setSchoolForm({ ...schoolForm, principalTitle: e.target.value })
+                        }
+                        className="w-full px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+                      />
+                    </div>
+                    <div className="sm:col-span-2 space-y-1">
+                      <label className="font-semibold">Principal&apos;s Message Quote</label>
+                      <textarea
+                        rows={2}
+                        value={schoolForm.principalMessage}
+                        onChange={(e) =>
+                          setSchoolForm({ ...schoolForm, principalMessage: e.target.value })
+                        }
+                        className="w-full px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Vision, Mission & Contact Details */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  <div className="space-y-1">
+                    <label className="font-semibold">School Vision Statement</label>
+                    <textarea
+                      rows={2}
+                      value={schoolForm.vision}
+                      onChange={(e) =>
+                        setSchoolForm({ ...schoolForm, vision: e.target.value })
+                      }
+                      className="w-full px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-semibold">School Mission Statement</label>
+                    <textarea
+                      rows={2}
+                      value={schoolForm.mission}
+                      onChange={(e) =>
+                        setSchoolForm({ ...schoolForm, mission: e.target.value })
+                      }
+                      className="w-full px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-semibold">Primary Phone</label>
+                    <input
+                      type="text"
+                      value={schoolForm.phonePrimary}
+                      onChange={(e) =>
+                        setSchoolForm({ ...schoolForm, phonePrimary: e.target.value })
+                      }
+                      className="w-full px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="font-semibold">Official Email</label>
+                    <input
+                      type="email"
+                      value={schoolForm.email}
+                      onChange={(e) => setSchoolForm({ ...schoolForm, email: e.target.value })}
+                      className="w-full px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                    />
+                  </div>
+                  <div className="sm:col-span-2 space-y-1">
+                    <label className="font-semibold">Google Maps Location Link</label>
+                    <input
+                      type="text"
+                      value={schoolForm.googleMapsUrl}
+                      onChange={(e) =>
+                        setSchoolForm({ ...schoolForm, googleMapsUrl: e.target.value })
+                      }
+                      className="w-full px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                    />
+                  </div>
+                </div>
+
+                {/* Animated Counters Editor */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-slate-200 dark:border-slate-800 text-xs">
+                  <div>
+                    <label className="font-semibold block mb-1">Students Count</label>
+                    <input
+                      type="number"
+                      value={schoolForm.studentsCount}
+                      onChange={(e) =>
+                        setSchoolForm({
+                          ...schoolForm,
+                          studentsCount: parseInt(e.target.value || '0', 10),
+                        })
+                      }
+                      className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-semibold block mb-1">Teachers Count</label>
+                    <input
+                      type="number"
+                      value={schoolForm.teachersCount}
+                      onChange={(e) =>
+                        setSchoolForm({
+                          ...schoolForm,
+                          teachersCount: parseInt(e.target.value || '0', 10),
+                        })
+                      }
+                      className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-semibold block mb-1">Years Legacy</label>
+                    <input
+                      type="number"
+                      value={schoolForm.yearsCount}
+                      onChange={(e) =>
+                        setSchoolForm({
+                          ...schoolForm,
+                          yearsCount: parseInt(e.target.value || '0', 10),
+                        })
+                      }
+                      className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-semibold block mb-1">Awards Count</label>
+                    <input
+                      type="number"
+                      value={schoolForm.awardsCount}
+                      onChange={(e) =>
+                        setSchoolForm({
+                          ...schoolForm,
+                          awardsCount: parseInt(e.target.value || '0', 10),
+                        })
+                      }
+                      className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono"
+                    />
+                  </div>
+                </div>
+              </form>
+
+              {/* Part B: Home Page Campus Photo Showcase Uploader & Manager */}
+              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 space-y-6">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h2 className="font-display text-lg font-bold text-slate-900 dark:text-white">
+                      Upload &amp; Manage Home Page Campus Showcase Photos
+                    </h2>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      Photos uploaded here appear directly in the &quot;Campus Photo Showcase&quot; gallery on the Home Page.
+                    </p>
+                  </div>
+                  <span className="px-2.5 py-1 rounded bg-amber-500/15 text-amber-500 font-mono text-xs font-semibold">
+                    {(schoolForm.homeShowcaseImages || []).length} Photos on Home Page
+                  </span>
+                </div>
+
+                <form
+                  onSubmit={handleAddHomeShowcasePhoto}
+                  className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end bg-slate-50 dark:bg-slate-950/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800 text-xs"
                 >
-                  <Check className="w-4 h-4" />
-                  <span>Save Changes</span>
-                </button>
-              </div>
+                  <div className="md:col-span-3">
+                    <label className="block font-semibold mb-1">Photo Title *</label>
+                    <input
+                      type="text"
+                      required
+                      value={showcaseTitle}
+                      onChange={(e) => setShowcaseTitle(e.target.value)}
+                      placeholder="e.g., Main Academic Block"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block font-semibold mb-1">Category</label>
+                    <input
+                      type="text"
+                      value={showcaseCategory}
+                      onChange={(e) => setShowcaseCategory(e.target.value)}
+                      placeholder="Campus Life"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+                    />
+                  </div>
+                  <div className="md:col-span-3">
+                    <label className="block font-semibold mb-1">Caption</label>
+                    <input
+                      type="text"
+                      value={showcaseCaption}
+                      onChange={(e) => setShowcaseCaption(e.target.value)}
+                      placeholder="Short description shown on Home Page"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900"
+                    />
+                  </div>
+                  <div className="md:col-span-4 flex items-center justify-end gap-2">
+                    <label className="px-3 py-2 rounded-lg border border-dashed border-amber-500/60 text-amber-500 font-semibold inline-flex items-center gap-1.5 cursor-pointer hover:bg-amber-500/10">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>{showcaseImageUrl ? 'Photo Ready' : 'Choose Photo'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleShowcasePhotoUpload(e.target.files?.[0])}
+                        className="hidden"
+                      />
+                    </label>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold cursor-pointer whitespace-nowrap"
+                    >
+                      + Upload to Home
+                    </button>
+                  </div>
+                </form>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                <div className="space-y-1">
-                  <label className="font-semibold">School Name</label>
-                  <input
-                    type="text"
-                    value={schoolForm.schoolName}
-                    onChange={(e) =>
-                      setSchoolForm({ ...schoolForm, schoolName: e.target.value })
-                    }
-                    className="w-full px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="font-semibold">School Tagline</label>
-                  <input
-                    type="text"
-                    value={schoolForm.tagline}
-                    onChange={(e) => setSchoolForm({ ...schoolForm, tagline: e.target.value })}
-                    className="w-full px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
-                  />
-                </div>
-                <div className="sm:col-span-2 space-y-1">
-                  <label className="font-semibold">Hero Headline</label>
-                  <input
-                    type="text"
-                    value={schoolForm.heroHeadline}
-                    onChange={(e) =>
-                      setSchoolForm({ ...schoolForm, heroHeadline: e.target.value })
-                    }
-                    className="w-full px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="font-semibold">Primary Phone</label>
-                  <input
-                    type="text"
-                    value={schoolForm.phonePrimary}
-                    onChange={(e) =>
-                      setSchoolForm({ ...schoolForm, phonePrimary: e.target.value })
-                    }
-                    className="w-full px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="font-semibold">Official Email</label>
-                  <input
-                    type="email"
-                    value={schoolForm.email}
-                    onChange={(e) => setSchoolForm({ ...schoolForm, email: e.target.value })}
-                    className="w-full px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
-                  />
-                </div>
-                <div className="sm:col-span-2 space-y-1">
-                  <label className="font-semibold">Google Maps Location Link</label>
-                  <input
-                    type="text"
-                    value={schoolForm.googleMapsUrl}
-                    onChange={(e) =>
-                      setSchoolForm({ ...schoolForm, googleMapsUrl: e.target.value })
-                    }
-                    className="w-full px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {(schoolForm.homeShowcaseImages || []).map((photo) => (
+                    <div
+                      key={photo.id}
+                      className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 overflow-hidden flex flex-col justify-between"
+                    >
+                      <div className="aspect-[16/10] bg-slate-900 relative overflow-hidden">
+                        <ResilientImage
+                          src={photo.imageUrl}
+                          alt={photo.title}
+                          className="w-full h-full object-cover"
+                        />
+                        <span className="absolute top-2 left-2 px-2 py-0.5 rounded bg-slate-950/80 text-amber-400 font-mono text-[10px]">
+                          {photo.category}
+                        </span>
+                      </div>
+                      <div className="p-3.5 space-y-2 text-xs">
+                        <div className="font-display font-bold text-slate-900 dark:text-white truncate">
+                          {photo.title}
+                        </div>
+                        <p className="text-slate-500 dark:text-slate-400 line-clamp-2 text-[11px]">
+                          {photo.caption}
+                        </p>
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-800">
+                          <label className="text-[11px] font-semibold text-amber-500 hover:underline cursor-pointer inline-flex items-center gap-1">
+                            <Upload className="w-3 h-3" />
+                            <span>Replace Photo</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) =>
+                                handleReplaceShowcasePhotoFile(photo.id, e.target.files?.[0])
+                              }
+                              className="hidden"
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteShowcasePhoto(photo.id)}
+                            className="text-[11px] font-semibold text-rose-400 hover:underline cursor-pointer"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-
-              {/* Animated Counters Editor */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-slate-200 dark:border-slate-800 text-xs">
-                <div>
-                  <label className="font-semibold block mb-1">Students Count</label>
-                  <input
-                    type="number"
-                    value={schoolForm.studentsCount}
-                    onChange={(e) =>
-                      setSchoolForm({
-                        ...schoolForm,
-                        studentsCount: parseInt(e.target.value || '0', 10),
-                      })
-                    }
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold block mb-1">Teachers Count</label>
-                  <input
-                    type="number"
-                    value={schoolForm.teachersCount}
-                    onChange={(e) =>
-                      setSchoolForm({
-                        ...schoolForm,
-                        teachersCount: parseInt(e.target.value || '0', 10),
-                      })
-                    }
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold block mb-1">Years Legacy</label>
-                  <input
-                    type="number"
-                    value={schoolForm.yearsCount}
-                    onChange={(e) =>
-                      setSchoolForm({
-                        ...schoolForm,
-                        yearsCount: parseInt(e.target.value || '0', 10),
-                      })
-                    }
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold block mb-1">Awards Count</label>
-                  <input
-                    type="number"
-                    value={schoolForm.awardsCount}
-                    onChange={(e) =>
-                      setSchoolForm({
-                        ...schoolForm,
-                        awardsCount: parseInt(e.target.value || '0', 10),
-                      })
-                    }
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-mono"
-                  />
-                </div>
-              </div>
-            </form>
+            </div>
           )}
 
           {/* MODULE 5: CONTACT MESSAGES INBOX */}
@@ -1347,96 +1885,189 @@ export const AdminPortalPage: React.FC = () => {
             </div>
           )}
 
-          {/* MODULE 6: SETTINGS, FEATURE TOGGLES & ADMIN ROLES */}
+          {/* MODULE 6: SETTINGS PAGE MANAGING ALL HOME PAGE SECTIONS & PASSWORD RESET */}
           {activeModule === 'settings' && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Feature Toggles */}
-              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 space-y-4">
-                <h2 className="font-display text-lg font-bold text-slate-900 dark:text-white">
-                  System Feature Toggles
-                </h2>
-                {(
-                  [
-                    ['admissionFormOpen', 'Pre-Admission Online Form Open'],
-                    ['contactFormOpen', 'Public Contact Inquiry Form Open'],
-                    ['enableEventsEditing', 'Enable Events Content Editing'],
-                    ['enableSportsEditing', 'Enable Sports Content Editing'],
-                    ['enable3DHero', 'Enable Interactive 3D Campus Hero'],
-                    ['maintenanceMode', 'Maintenance Banner Mode'],
-                  ] as [keyof SiteConfig['featureToggles'], string][]
-                ).map(([tKey, label]) => (
-                  <label
-                    key={tKey}
-                    className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800 text-xs cursor-pointer"
-                  >
-                    <span className="font-medium">{label}</span>
-                    <input
-                      type="checkbox"
-                      checked={siteConfig.featureToggles[tKey]}
-                      onChange={(e) =>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" data-testid="admin-settings-module">
+              {/* Left Column: Manage All Home Page Sections + System Feature Toggles */}
+              <div className="space-y-6">
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <h2 className="font-display text-lg font-bold text-slate-900 dark:text-white">
+                        Manage All Home Page Sections
+                      </h2>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Show or hide individual sections on the public Home Page in real time.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
                         updateSiteConfig({
                           featureToggles: {
                             ...siteConfig.featureToggles,
-                            [tKey]: e.target.checked,
+                            enable3DHero: true,
+                            showHomeWelcome: true,
+                            showHomePhotoShowcase: true,
+                            showHomePillars: true,
+                            showHomeAchievements: true,
+                            showHomeEventsSports: true,
+                            showHomeCampusTour: true,
+                            showHomeTestimonials: true,
+                            showHomeDownloads: true,
+                            showHomeFaq: true,
+                            showHomeCtaBanner: true,
                           },
                         })
                       }
-                      className="w-4 h-4 accent-amber-500"
-                    />
-                  </label>
-                ))}
-                <div className="flex items-center justify-between pt-2 text-xs">
-                  <span className="font-medium">Active Visual Theme</span>
-                  <button
-                    type="button"
-                    onClick={toggleTheme}
-                    className="px-3 py-1.5 rounded bg-slate-100 dark:bg-slate-800 font-semibold cursor-pointer"
-                  >
-                    Switch to {theme === 'dark' ? 'Light' : 'Dark'} Mode
-                  </button>
+                      className="px-3 py-1 rounded bg-amber-500/15 text-amber-500 text-[11px] font-semibold cursor-pointer hover:bg-amber-500 hover:text-slate-950"
+                    >
+                      Enable All Home Sections
+                    </button>
+                  </div>
+
+                  {(
+                    [
+                      ['enable3DHero', 'Home Hero 3D Interactive Campus Scene'],
+                      ['showHomeWelcome', 'Welcome Message & Principal Desk Section'],
+                      ['showHomePhotoShowcase', 'Uploaded Campus Photo Showcase Grid'],
+                      ['showHomePillars', 'Academic & Residential Core Pillars (3D Tilt Cards)'],
+                      ['showHomeAchievements', 'Board Exam Toppers & Achievements Spotlight'],
+                      ['showHomeEventsSports', 'Recent Campus Events & Sports Highlights'],
+                      ['showHomeCampusTour', 'Interactive 6-Zone Campus Tour Explorer'],
+                      ['showHomeTestimonials', 'Parent & Alumni Testimonials Carousel'],
+                      ['showHomeDownloads', 'Brochures, Prospectus & Fee Structure Downloads'],
+                      ['showHomeFaq', 'Frequently Asked Questions (FAQ) Accordion'],
+                      ['showHomeCtaBanner', 'Bottom Pre-Admission Call-to-Action Banner'],
+                    ] as [keyof SiteConfig['featureToggles'], string][]
+                  ).map(([tKey, label]) => (
+                    <label
+                      key={tKey}
+                      className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800 text-xs cursor-pointer"
+                    >
+                      <span className="font-medium">{label}</span>
+                      <input
+                        type="checkbox"
+                        checked={siteConfig.featureToggles[tKey] !== false}
+                        onChange={(e) =>
+                          updateSiteConfig({
+                            featureToggles: {
+                              ...siteConfig.featureToggles,
+                              [tKey]: e.target.checked,
+                            },
+                          })
+                        }
+                        className="w-4 h-4 accent-amber-500"
+                      />
+                    </label>
+                  ))}
+                </div>
+
+                {/* System & Portal Feature Toggles */}
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 space-y-4">
+                  <h2 className="font-display text-lg font-bold text-slate-900 dark:text-white">
+                    Global Portal &amp; Form Toggles
+                  </h2>
+                  {(
+                    [
+                      ['admissionFormOpen', 'Pre-Admission Online Application Form Open'],
+                      ['contactFormOpen', 'Public Contact Inquiry Form Open'],
+                      ['enableEventsEditing', 'Enable Events Content Publishing'],
+                      ['enableSportsEditing', 'Enable Sports Content Publishing'],
+                      ['maintenanceMode', 'Maintenance Notice Banner Mode'],
+                    ] as [keyof SiteConfig['featureToggles'], string][]
+                  ).map(([tKey, label]) => (
+                    <label
+                      key={tKey}
+                      className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800 text-xs cursor-pointer"
+                    >
+                      <span className="font-medium">{label}</span>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(siteConfig.featureToggles[tKey])}
+                        onChange={(e) =>
+                          updateSiteConfig({
+                            featureToggles: {
+                              ...siteConfig.featureToggles,
+                              [tKey]: e.target.checked,
+                            },
+                          })
+                        }
+                        className="w-4 h-4 accent-amber-500"
+                      />
+                    </label>
+                  ))}
+                  <div className="flex items-center justify-between pt-2 text-xs">
+                    <span className="font-medium">Active Visual Theme</span>
+                    <button
+                      type="button"
+                      onClick={toggleTheme}
+                      className="px-3 py-1.5 rounded bg-slate-100 dark:bg-slate-800 font-semibold cursor-pointer"
+                    >
+                      Switch to {theme === 'dark' ? 'Light' : 'Dark'} Mode
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              {/* Password Change & Role Management */}
+              {/* Right Column: Password Change, Password Reset & Role Management */}
               <div className="space-y-6">
-                <form
-                  onSubmit={handlePasswordChangeSubmit}
-                  className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 space-y-4 text-xs"
-                >
-                  <h2 className="font-display text-lg font-bold text-slate-900 dark:text-white">
-                    Change Administrator Passkey
-                  </h2>
-                  <input
-                    type="password"
-                    required
-                    value={currentPassInput}
-                    onChange={(e) => setCurrentPassInput(e.target.value)}
-                    placeholder="Current Passkey"
-                    className="w-full px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
-                  />
-                  <input
-                    type="password"
-                    required
-                    value={newPassInput}
-                    onChange={(e) => setNewPassInput(e.target.value)}
-                    placeholder="New Passkey (min 8 chars)"
-                    className="w-full px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
-                  />
-                  <input
-                    type="password"
-                    required
-                    value={confirmPassInput}
-                    onChange={(e) => setConfirmPassInput(e.target.value)}
-                    placeholder="Confirm New Passkey"
-                    className="w-full px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
-                  />
-                  <button
-                    type="submit"
-                    className="px-4 py-2 rounded-lg bg-amber-500 text-slate-950 font-semibold cursor-pointer"
-                  >
-                    Update Passkey
-                  </button>
-                </form>
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 space-y-5 text-xs">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <h2 className="font-display text-lg font-bold text-slate-900 dark:text-white">
+                        Admin Password &amp; Reset Options
+                      </h2>
+                      <p className="text-slate-500 dark:text-slate-400">
+                        Default password is <code className="font-mono text-amber-500">srtschool27</code>. Change it below or reset to default anytime.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      data-testid="settings-reset-default-password-btn"
+                      onClick={resetAdminPasswordToDefault}
+                      className="px-3.5 py-2 rounded-lg bg-amber-500/15 border border-amber-500/40 text-amber-500 hover:bg-amber-500 hover:text-slate-950 font-semibold cursor-pointer"
+                    >
+                      Reset Password to &quot;srtschool27&quot;
+                    </button>
+                  </div>
+
+                  <form onSubmit={handlePasswordChangeSubmit} className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <div className="font-semibold text-slate-700 dark:text-slate-200">
+                      Set Custom Admin Password
+                    </div>
+                    <input
+                      type="password"
+                      required
+                      value={currentPassInput}
+                      onChange={(e) => setCurrentPassInput(e.target.value)}
+                      placeholder="Current Password (e.g. srtschool27)"
+                      className="w-full px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                    />
+                    <input
+                      type="password"
+                      required
+                      value={newPassInput}
+                      onChange={(e) => setNewPassInput(e.target.value)}
+                      placeholder="New Password (min 6 characters)"
+                      className="w-full px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                    />
+                    <input
+                      type="password"
+                      required
+                      value={confirmPassInput}
+                      onChange={(e) => setConfirmPassInput(e.target.value)}
+                      placeholder="Confirm New Password"
+                      className="w-full px-3.5 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
+                    />
+                    <button
+                      type="submit"
+                      className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold cursor-pointer"
+                    >
+                      Update Admin Password
+                    </button>
+                  </form>
+                </div>
 
                 {/* Manage Admin Users */}
                 <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 space-y-4 text-xs">
@@ -1502,7 +2133,7 @@ export const AdminPortalPage: React.FC = () => {
                 <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 space-y-4 text-xs">
                   <div className="flex items-center justify-between">
                     <h2 className="font-display text-lg font-bold text-slate-900 dark:text-white">
-                      Firebase Client & Cloud Push
+                      Firebase Client &amp; Cloud Push
                     </h2>
                     <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-500 font-mono text-[11px]">
                       Connected
@@ -1534,14 +2165,6 @@ export const AdminPortalPage: React.FC = () => {
                     >
                       Push Current Site Content to Firestore
                     </button>
-                  </div>
-                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
-                    <div className="font-semibold text-slate-700 dark:text-slate-200">
-                      Firebase Hosting CLI Push (Configured via firebase.json & .firebaserc):
-                    </div>
-                    <code className="block rounded bg-slate-100 dark:bg-slate-950 px-2.5 py-1.5 font-mono text-amber-500">
-                      npm run build && npx firebase-tools deploy --only hosting
-                    </code>
                   </div>
                 </div>
               </div>
@@ -1658,3 +2281,4 @@ export const AdminPortalPage: React.FC = () => {
     </div>
   );
 };
+

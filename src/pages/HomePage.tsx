@@ -70,6 +70,8 @@ export const HomePage: React.FC = () => {
   const testimonials = galleryItems.filter((i) => i.section === 'testimonials');
   const downloads = galleryItems.filter((i) => i.section === 'downloads');
   const faqs = galleryItems.filter((i) => i.section === 'faq');
+  const homeShowcase = siteConfig.homeShowcaseImages || [];
+  const toggles = siteConfig.featureToggles;
 
   useEffect(() => {
     if (!sectionsRef.current) return;
@@ -140,83 +142,161 @@ export const HomePage: React.FC = () => {
       />
 
       {/* 2. Welcome & Principal's Leadership Section */}
-      <section className="max-w-7xl mx-auto px-6 gsap-reveal">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-stretch">
-          <div className="lg:col-span-7 flex flex-col justify-between space-y-6">
-            <div className="space-y-3">
-              <div className="text-xs font-medium text-amber-600 dark:text-amber-400">
-                01. Institutional Welcome · Sathyamangalam
+      {toggles.showHomeWelcome !== false && (
+        <section className="max-w-7xl mx-auto px-6 gsap-reveal">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-stretch">
+            <div className="lg:col-span-7 flex flex-col justify-between space-y-6">
+              <div className="space-y-3">
+                <div className="text-xs font-medium text-amber-600 dark:text-amber-400">
+                  01. Institutional Welcome · Sathyamangalam
+                </div>
+                <h2 className="font-display text-2xl sm:text-4xl font-bold text-slate-900 dark:text-white tracking-tight">
+                  {siteConfig.welcomeTitle}
+                </h2>
+                <p className="text-base text-slate-600 dark:text-slate-300 leading-relaxed">
+                  {siteConfig.welcomeMessage}
+                </p>
               </div>
-              <h2 className="font-display text-2xl sm:text-4xl font-bold text-slate-900 dark:text-white tracking-tight">
-                {siteConfig.welcomeTitle}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-slate-200 dark:border-slate-800">
+                <div>
+                  <h3 className="font-display text-base font-semibold text-slate-900 dark:text-white">
+                    Our Vision
+                  </h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1.5 leading-relaxed">
+                    {siteConfig.vision}
+                  </p>
+                </div>
+                <div>
+                  <h3 className="font-display text-base font-semibold text-slate-900 dark:text-white">
+                    Our Mission
+                  </h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1.5 leading-relaxed">
+                    {siteConfig.mission}
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => navigate('/about')}
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"
+                >
+                  <span>Read Full Institutional History &amp; Campus Profile</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Principal's Message Card with Uploaded Principal Photo */}
+            <div className="lg:col-span-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 flex flex-col justify-between space-y-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="text-xs font-medium text-amber-600 dark:text-amber-400">
+                    Principal’s Desk · Leadership Note
+                  </div>
+                  {siteConfig.principalPhotoUrl && (
+                    <div className="w-14 h-14 rounded-xl overflow-hidden border border-amber-500/40 shrink-0 bg-slate-950">
+                      <ResilientImage
+                        src={siteConfig.principalPhotoUrl}
+                        alt={siteConfig.principalName}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                </div>
+                <h3 className="font-display text-xl font-bold text-slate-900 dark:text-white">
+                  “Every scholar deserves individual mentorship and intellectual courage.”
+                </h3>
+                <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                  {siteConfig.principalMessage}
+                </p>
+              </div>
+
+              <div className="pt-5 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <div>
+                  <div className="font-display font-bold text-slate-900 dark:text-white">
+                    {siteConfig.principalName}
+                  </div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400">
+                    {siteConfig.principalTitle} · {siteConfig.schoolName}
+                  </div>
+                </div>
+                <Award className="w-8 h-8 text-amber-500 shrink-0" />
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* 2B. Uploaded Home Page Campus Photo Showcase (Editable & Uploadable in /admin) */}
+      {toggles.showHomePhotoShowcase !== false && homeShowcase.length > 0 && (
+        <section className="max-w-7xl mx-auto px-6 gsap-reveal space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <div>
+              <div className="text-xs font-medium text-amber-600 dark:text-amber-400">
+                Featured Campus Highlights · Sathyamangalam
+              </div>
+              <h2 className="font-display text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mt-1">
+                Campus Infrastructure &amp; Learning Spaces
               </h2>
-              <p className="text-base text-slate-600 dark:text-slate-300 leading-relaxed">
-                {siteConfig.welcomeMessage}
-              </p>
             </div>
+            <button
+              type="button"
+              onClick={() => navigate('/galleries')}
+              className="text-sm font-semibold text-amber-600 dark:text-amber-400 hover:underline inline-flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0"
+            >
+              <span>View Full Photo Galleries</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 border-t border-slate-200 dark:border-slate-800">
-              <div>
-                <h3 className="font-display text-base font-semibold text-slate-900 dark:text-white">
-                  Our Vision
-                </h3>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1.5 leading-relaxed">
-                  {siteConfig.vision}
-                </p>
-              </div>
-              <div>
-                <h3 className="font-display text-base font-semibold text-slate-900 dark:text-white">
-                  Our Mission
-                </h3>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1.5 leading-relaxed">
-                  {siteConfig.mission}
-                </p>
-              </div>
-            </div>
-
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={() => navigate('/about')}
-                className="inline-flex items-center gap-2 text-sm font-semibold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {homeShowcase.map((photo, idx) => (
+              <TiltCard
+                key={photo.id || idx}
+                onClick={() =>
+                  openLightbox(
+                    homeShowcase.map((p) => ({
+                      id: p.id,
+                      section: 'events',
+                      title: p.title,
+                      category: 'Campus Showcase',
+                      year: '2026',
+                      date: 'Sathyamangalam Campus',
+                      description: p.caption,
+                      imageUrl: p.imageUrl,
+                    })),
+                    idx
+                  )
+                }
+                className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden cursor-pointer flex flex-col justify-between"
               >
-                <span>Read Full Institutional History &amp; Campus Profile</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* Principal's Message Card */}
-          <div className="lg:col-span-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 flex flex-col justify-between space-y-6">
-            <div className="space-y-4">
-              <div className="text-xs font-medium text-amber-600 dark:text-amber-400">
-                Principal’s Desk · Leadership Note
-              </div>
-              <h3 className="font-display text-xl font-bold text-slate-900 dark:text-white">
-                “Every scholar deserves individual mentorship and intellectual courage.”
-              </h3>
-              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                {siteConfig.principalMessage}
-              </p>
-            </div>
-
-            <div className="pt-5 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-              <div>
-                <div className="font-display font-bold text-slate-900 dark:text-white">
-                  {siteConfig.principalName}
+                <div className="aspect-[16/10] w-full overflow-hidden bg-slate-950">
+                  <ResilientImage
+                    src={photo.imageUrl}
+                    alt={photo.title}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
-                <div className="text-xs text-slate-500 dark:text-slate-400">
-                  {siteConfig.principalTitle} · {siteConfig.schoolName}
+                <div className="p-5 space-y-1.5">
+                  <h3 className="font-display text-base font-bold text-slate-900 dark:text-white">
+                    {photo.title}
+                  </h3>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    {photo.caption}
+                  </p>
                 </div>
-              </div>
-              <Award className="w-8 h-8 text-amber-500 shrink-0" />
-            </div>
+              </TiltCard>
+            ))}
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* 3. Asymmetric Bento Grid: Academic & Residential Pillars */}
-      <section className="max-w-7xl mx-auto px-6 gsap-reveal space-y-8">
+      {toggles.showHomePillars !== false && (
+        <section className="max-w-7xl mx-auto px-6 gsap-reveal space-y-8">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
             <div className="text-xs font-medium text-amber-600 dark:text-amber-400">
@@ -291,8 +371,10 @@ export const HomePage: React.FC = () => {
           </TiltCard>
         </div>
       </section>
+      )}
 
       {/* 4. Achievements Marquee & Topper Spotlights */}
+      {toggles.showHomeAchievements !== false && (
       <section className="max-w-7xl mx-auto px-6 gsap-reveal space-y-8">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
@@ -349,8 +431,10 @@ export const HomePage: React.FC = () => {
           ))}
         </div>
       </section>
+      )}
 
       {/* 5. Latest Campus Events & Championship Sports Preview */}
+      {toggles.showHomeEventsSports !== false && (
       <section className="max-w-7xl mx-auto px-6 gsap-reveal space-y-8">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div>
@@ -423,8 +507,10 @@ export const HomePage: React.FC = () => {
           ))}
         </div>
       </section>
+      )}
 
       {/* 6. Interactive Virtual Campus Tour Explorer */}
+      {toggles.showHomeCampusTour !== false && (
       <section className="max-w-7xl mx-auto px-6 gsap-reveal">
         <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 lg:p-10 space-y-8">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -506,10 +592,13 @@ export const HomePage: React.FC = () => {
           ))}
         </div>
       </section>
+      )}
 
       {/* 7. Attributable Alumni & Parent Testimonials + Circular Downloads */}
+      {(toggles.showHomeTestimonials !== false || toggles.showHomeDownloads !== false) && (
       <section className="max-w-7xl mx-auto px-6 gsap-reveal grid grid-cols-1 lg:grid-cols-12 gap-12">
         {/* Testimonials */}
+        {toggles.showHomeTestimonials !== false && (
         <div className="lg:col-span-6 space-y-6">
           <div>
             <div className="text-xs font-medium text-amber-600 dark:text-amber-400">
@@ -541,8 +630,10 @@ export const HomePage: React.FC = () => {
             ))}
           </div>
         </div>
+        )}
 
         {/* Downloads (Prospectus, Fee Structure, Academic Calendar) */}
+        {toggles.showHomeDownloads !== false && (
         <div className="lg:col-span-6 space-y-6">
           <div>
             <div className="text-xs font-medium text-amber-600 dark:text-amber-400">
@@ -585,9 +676,12 @@ export const HomePage: React.FC = () => {
             ))}
           </div>
         </div>
+        )}
       </section>
+      )}
 
       {/* 8. Frequently Asked Questions */}
+      {toggles.showHomeFaq !== false && (
       <section className="max-w-5xl mx-auto px-6 gsap-reveal space-y-6">
         <div className="text-center space-y-2">
           <div className="text-xs font-medium text-amber-600 dark:text-amber-400">
@@ -631,8 +725,10 @@ export const HomePage: React.FC = () => {
           })}
         </div>
       </section>
+      )}
 
       {/* 9. Pre-Admission Call-To-Action Conversion Banner */}
+      {toggles.showHomeCtaBanner !== false && (
       <section className="max-w-7xl mx-auto px-6 gsap-reveal">
         <div className="rounded-2xl bg-gradient-to-r from-slate-900 via-blue-950 to-slate-900 border border-slate-800 p-8 sm:p-12 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8">
           <div className="space-y-2 max-w-2xl">
@@ -666,6 +762,7 @@ export const HomePage: React.FC = () => {
           </div>
         </div>
       </section>
+      )}
 
       <LightboxModal
         items={lightboxList}
